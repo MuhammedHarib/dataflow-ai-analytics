@@ -1,118 +1,176 @@
 // src/layouts/AppShell.jsx
+// Design: "Refined Monochrome Pro" — matches Sidebar
+// FIXES: removed Google Fonts @import (offline-safe system font stack)
+// White topbar + #f7f7f8 content bg + Lucide icons
+
 import React, { useState } from 'react'
+import { Search, Bell, Command } from 'lucide-react'
 import Sidebar from '../components/sidebar/Sidebar'
 
+// Offline-safe — no network request
+const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
+
 const T = {
-  bg:     '#0e1018',
-  topbar: '#13151e',
-  border: 'rgba(255,255,255,0.07)',
-  text:   'rgba(255,255,255,0.88)',
-  muted:  'rgba(255,255,255,0.35)',
-  accent: '#e05c2d',
+  pageBg:    '#f7f7f8',
+  topbar:    '#ffffff',
+  border:    '#ebebed',
+  text:      '#0f1117',
+  muted:     '#6b7280',
+  dim:       '#a1a1aa',
+  inputBg:   '#f4f4f6',
+  accent:    '#6366f1',
+  accentBg:  '#eef2ff',
+  accentBd:  '#c7d2fe',
 }
 
+// ─── Topbar icon button ───────────────────────────────────────────
+function TopbarBtn({ icon: Icon, tooltip, badge, onClick }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <button
+      title={tooltip}
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        width: 32, height: 32, borderRadius: 8,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: hov ? '#f4f4f6' : 'transparent',
+        border: `1px solid ${hov ? '#d4d4d8' : T.border}`,
+        color: hov ? T.text : T.muted,
+        cursor: 'pointer', outline: 'none', position: 'relative',
+        transition: 'all 0.15s', flexShrink: 0,
+        fontFamily: FONT,
+      }}
+    >
+      <Icon size={14} strokeWidth={1.8} />
+      {badge && (
+        <span style={{
+          position: 'absolute', top: 6, right: 6,
+          width: 6, height: 6, borderRadius: '50%',
+          background: T.accent,
+          border: '1.5px solid #ffffff',
+        }} />
+      )}
+    </button>
+  )
+}
+
+// ─── Shell ────────────────────────────────────────────────────────
 export default function AppShell({ children, activePage }) {
-  const [collapsed, setCollapsed] = useState(false)
+  const [collapsed,    setCollapsed]    = useState(false)
+  const [searchFocus,  setSearchFocus]  = useState(false)
 
   return (
     <div style={{
       display: 'flex', height: '100vh',
-      background: T.bg,
-      fontFamily: "'IBM Plex Sans','Segoe UI',sans-serif",
+      background: T.pageBg,
+      fontFamily: FONT,
       color: T.text, overflow: 'hidden',
     }}>
-      <Sidebar collapsed={collapsed} onCollapse={() => setCollapsed(c => !c)} activePage={activePage}/>
+      <style>{`
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        ::-webkit-scrollbar              { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track        { background: transparent; }
+        ::-webkit-scrollbar-thumb        { background: #d4d4d8; border-radius: 99px; }
+        ::-webkit-scrollbar-thumb:hover  { background: #a1a1aa; }
+        input::placeholder, textarea::placeholder { color: #a1a1aa; }
+        button { font-family: inherit; }
+      `}</style>
 
-      <div style={{ flex:1, display:'flex', flexDirection:'column', overflow:'hidden', minWidth:0 }}>
+      <Sidebar
+        collapsed={collapsed}
+        onCollapse={() => setCollapsed(c => !c)}
+        activePage={activePage}
+      />
 
-        {/* ── Topbar ─────────────────────────────────────────────── */}
-        <div style={{
-          height: 54, background: T.topbar,
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minWidth: 0 }}>
+
+        {/* ── Topbar ─────────────────────────────────────────── */}
+        <header style={{
+          height: 52, background: T.topbar,
           borderBottom: `1px solid ${T.border}`,
           display: 'flex', alignItems: 'center',
-          padding: '0 16px', gap: 12, flexShrink: 0,
+          padding: '0 20px', gap: 12, flexShrink: 0,
         }}>
 
-          {/* Search — takes available space, max 480px, not fixed-centered */}
+          {/* Search */}
           <div style={{
-            flex: '1 1 0',       /* grows but can shrink */
-            minWidth: 120,
-            maxWidth: 480,
-            height: 36,
-            background: 'rgba(255,255,255,0.05)',
-            border: `1px solid rgba(255,255,255,0.09)`,
-            borderRadius: 10,
-            display: 'flex', alignItems: 'center',
-            gap: 8, padding: '0 12px',
-            transition: 'border-color 0.15s, box-shadow 0.15s',
+            flex: '1 1 0', minWidth: 120, maxWidth: 440, height: 34,
+            background: searchFocus ? '#ffffff' : T.inputBg,
+            border: `1px solid ${searchFocus ? T.accent : T.border}`,
+            borderRadius: 9,
+            display: 'flex', alignItems: 'center', gap: 8, padding: '0 11px',
+            transition: 'border-color 0.15s, background 0.15s, box-shadow 0.15s',
+            boxShadow: searchFocus ? `0 0 0 3px rgba(99,102,241,0.15)` : 'none',
+            cursor: 'text',
           }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor"
-              strokeWidth="2" style={{ color:'rgba(255,255,255,0.28)', flexShrink:0 }}>
-              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            </svg>
-            <input placeholder="Search projects, dashboards, chats…"
+            <Search
+              size={13} strokeWidth={2}
+              style={{ color: searchFocus ? T.accent : T.dim, flexShrink: 0, transition: 'color 0.15s' }}
+            />
+            <input
+              placeholder="Search projects, dashboards, chats…"
+              onFocus={() => setSearchFocus(true)}
+              onBlur={()  => setSearchFocus(false)}
               style={{
                 background: 'transparent', border: 'none', outline: 'none',
                 color: T.text, fontSize: 13, flex: 1, minWidth: 0,
-              }}/>
-            <span style={{
-              fontSize: 10, color: 'rgba(255,255,255,0.22)',
-              background: 'rgba(255,255,255,0.05)',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 5, padding: '2px 6px', flexShrink: 0,
-              fontFamily: 'monospace',
-            }}>⌘K</span>
+                fontFamily: FONT, fontWeight: 400,
+              }}
+            />
+            {/* ⌘K hint — fades when focused */}
+            <div style={{
+              display: 'flex', alignItems: 'center', gap: 2,
+              background: T.topbar, border: `1px solid ${T.border}`,
+              borderRadius: 6, padding: '2px 6px', flexShrink: 0,
+              opacity: searchFocus ? 0 : 1, transition: 'opacity 0.15s',
+              pointerEvents: 'none',
+            }}>
+              <Command size={9} strokeWidth={2} style={{ color: T.dim }} />
+              <span style={{ fontSize: 10, color: T.dim, fontFamily: 'monospace', lineHeight: 1 }}>K</span>
+            </div>
           </div>
 
-          {/* Spacer — pushes right actions to the right */}
-          <div style={{ flex: '1 0 0' }}/>
+          <div style={{ flex: '1 0 0' }} />
 
-          {/* Right actions */}
-          <div style={{ display:'flex', alignItems:'center', gap:10, flexShrink:0 }}>
-            <span style={{ fontSize: 11, color: T.muted, whiteSpace:'nowrap' }}>
-              {new Date().toLocaleDateString('en-US', { weekday:'short', month:'short', day:'numeric' })}
+          {/* Right cluster */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+            <span style={{
+              fontSize: 12, color: T.dim, whiteSpace: 'nowrap',
+              fontWeight: 400, letterSpacing: '-0.01em',
+            }}>
+              {new Date().toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
             </span>
 
-            <button style={{
-              width:34, height:34, borderRadius:9,
-              background:'rgba(255,255,255,0.04)', border:`1px solid ${T.border}`,
-              color:'rgba(255,255,255,0.4)', cursor:'pointer',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              transition:'all 0.15s',
-            }}
-            onMouseEnter={e=>e.currentTarget.style.background='rgba(255,255,255,0.08)'}
-            onMouseLeave={e=>e.currentTarget.style.background='rgba(255,255,255,0.04)'}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-            </button>
+            <div style={{ width: 1, height: 18, background: T.border, flexShrink: 0 }} />
 
-            <div style={{
-              width:34, height:34, borderRadius:9,
-              background:`linear-gradient(135deg, ${T.accent}55, ${T.accent}22)`,
-              border:`1px solid ${T.accent}55`,
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:12, fontWeight:800, color:T.accent, cursor:'pointer',
-            }}>MH</div>
+            <TopbarBtn icon={Bell} tooltip="Notifications" badge />
+
+            {/* Avatar */}
+            <div
+              title="Account"
+              style={{
+                width: 32, height: 32, borderRadius: 9,
+                background: T.accentBg,
+                border: `1.5px solid ${T.accentBd}`,
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 11, fontWeight: 700,
+                color: T.accent, cursor: 'pointer',
+                letterSpacing: '0.02em', userSelect: 'none',
+                transition: 'box-shadow 0.15s', fontFamily: FONT,
+              }}
+              onMouseEnter={e => e.currentTarget.style.boxShadow = `0 0 0 3px rgba(99,102,241,0.2)`}
+              onMouseLeave={e => e.currentTarget.style.boxShadow = 'none'}
+            >MH</div>
           </div>
-        </div>
+        </header>
 
-        {/* Content */}
-        <div style={{ flex:1, overflow:'auto', position:'relative' }}>
+        {/* ── Content ────────────────────────────────────────── */}
+        <main style={{ flex: 1, overflow: 'auto', position: 'relative' }}>
           {children}
-        </div>
+        </main>
       </div>
-
-      <style>{`
-        * { box-sizing: border-box; }
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 99px; }
-        ::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
-        input::placeholder, textarea::placeholder { color: rgba(255,255,255,0.22); }
-        @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700;800&family=DM+Mono:wght@400;500&display=swap');
-      `}</style>
     </div>
   )
 }
