@@ -34,9 +34,16 @@ const C = {
   text:        '#0f1117',
   textSub:     '#6b7280',
   textDim:     '#a1a1aa',
-  rowHov:      '#f4f4f6',
-  rowActive:   '#eef2ff',
-  rowActiveTx: '#4338ca',
+
+  // Pill active — solid indigo fill, white text
+  rowActive:   '#6366f1',
+  rowActiveTx: '#ffffff',
+  rowActiveIc: '#ffffff',
+
+  // Hover — soft indigo tint
+  rowHov:      '#eef2ff',
+  rowHovTx:    '#4338ca',
+
   rowActiveBd: '#6366f1',
   accent:      '#6366f1',
   accentLight: '#eef2ff',
@@ -75,10 +82,18 @@ function RailBtn({ icon: Icon, active, onClick, tooltip }) {
   )
 }
 
-// ─── Panel row ────────────────────────────────────────────────────
+// ─── Panel row — pill active style ───────────────────────────────
 function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, indent }) {
   const [hov, setHov] = useState(false)
   const pl = 12 + (depth * 14) + (indent ? 10 : 0)
+
+  // Pill active: solid indigo bg + white text
+  // Hover: soft indigo tint + indigo text
+  // Default: transparent
+  const bg    = active ? C.rowActive  : hov ? C.rowHov  : 'transparent'
+  const color = active ? C.rowActiveTx : hov ? C.rowHovTx : dim ? C.textDim : C.text
+  const iconOpacity = active ? 1 : dim ? 0.45 : hov ? 0.85 : 0.6
+
   return (
     <button
       onClick={onClick}
@@ -86,25 +101,25 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, i
       onMouseLeave={() => setHov(false)}
       style={{
         width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-        paddingTop: 5, paddingBottom: 5,
+        paddingTop: 6, paddingBottom: 6,
         paddingLeft: pl, paddingRight: 10,
-        borderRadius: 8, cursor: 'pointer', userSelect: 'none', textAlign: 'left',
-        border: 'none', marginBottom: 1, position: 'relative',
-        background: active ? C.rowActive : hov ? C.rowHov : 'transparent',
-        color: active ? C.rowActiveTx : dim ? C.textDim : C.text,
-        transition: 'background 0.12s, color 0.12s',
+        // Full pill shape — matches the reference image exactly
+        borderRadius: 9,
+        cursor: 'pointer', userSelect: 'none', textAlign: 'left',
+        border: 'none', marginBottom: 2,
+        background: bg, color,
+        transition: 'background 0.15s, color 0.15s',
         fontFamily: FONT,
+        // Subtle shadow on active to lift the pill
+        boxShadow: active ? '0 2px 8px rgba(99,102,241,0.25)' : 'none',
       }}
     >
-      {active && (
-        <span style={{
-          position: 'absolute', left: 0, top: '18%', bottom: '18%',
-          width: 3, borderRadius: '0 3px 3px 0', background: C.rowActiveBd,
-        }} />
-      )}
       {Icon && (
-        <Icon size={13} strokeWidth={active ? 2.2 : 1.7}
-          style={{ flexShrink: 0, opacity: active ? 1 : dim ? 0.4 : 0.65 }} />
+        <Icon
+          size={13}
+          strokeWidth={active ? 2.2 : 1.75}
+          style={{ flexShrink: 0, opacity: iconOpacity, transition: 'opacity 0.15s' }}
+        />
       )}
       <span style={{
         fontSize: 13, fontWeight: active ? 600 : dim ? 400 : 500,
@@ -114,9 +129,11 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, i
       }}>{label}</span>
       {badge != null && (
         <span style={{
-          fontSize: 10, fontWeight: 600, color: C.textDim,
-          background: C.rowHov, borderRadius: 99, padding: '1px 7px',
-          border: `1px solid ${C.divider}`,
+          fontSize: 10, fontWeight: 700,
+          color: active ? 'rgba(255,255,255,0.7)' : C.textDim,
+          background: active ? 'rgba(255,255,255,0.18)' : '#f3f4f6',
+          borderRadius: 99, padding: '1px 7px',
+          border: active ? '1px solid rgba(255,255,255,0.2)' : `1px solid ${C.divider}`,
         }}>{badge}</span>
       )}
     </button>
@@ -204,12 +221,13 @@ function ProjectNode({ project, activePage }) {
         onMouseLeave={() => setHov(false)}
         style={{
           width: '100%', display: 'flex', alignItems: 'center', gap: 9,
-          padding: '6px 10px 6px 12px', borderRadius: 8,
+          padding: '6px 10px 6px 12px', borderRadius: 9,
           cursor: 'pointer', userSelect: 'none', textAlign: 'left',
-          border: 'none', position: 'relative',
+          border: 'none',
           background: isActive ? C.rowActive : hov ? C.rowHov : 'transparent',
-          transition: 'background 0.12s',
+          transition: 'background 0.15s',
           fontFamily: FONT,
+          boxShadow: isActive ? '0 2px 8px rgba(99,102,241,0.22)' : 'none',
         }}
       >
         {isActive && (
@@ -221,19 +239,18 @@ function ProjectNode({ project, activePage }) {
         )}
         <span style={{
           width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-          background: project.color || C.accent,
-          transition: 'box-shadow 0.15s',
-          boxShadow: isActive ? `0 0 0 2.5px ${C.accentLight}` : 'none',
+          background: isActive ? 'rgba(255,255,255,0.8)' : (project.color || C.accent),
+          transition: 'background 0.15s',
         }} />
         <span style={{
           fontSize: 13, fontWeight: isActive ? 600 : 500,
-          color: isActive ? C.rowActiveTx : C.text,
+          color: isActive ? C.rowActiveTx : hov ? C.rowHovTx : C.text,
           flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-          letterSpacing: '-0.01em',
+          letterSpacing: '-0.01em', transition: 'color 0.15s',
         }}>{project.name}</span>
         <ChevronRight size={11} style={{
-          color: C.textDim, flexShrink: 0,
-          transition: 'transform 0.18s cubic-bezier(.4,0,.2,1)',
+          color: isActive ? 'rgba(255,255,255,0.7)' : C.textDim, flexShrink: 0,
+          transition: 'transform 0.18s cubic-bezier(.4,0,.2,1), color 0.15s',
           transform: open ? 'rotate(90deg)' : 'rotate(0deg)',
         }} />
       </button>
