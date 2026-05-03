@@ -1,0 +1,733 @@
+/* ═══════════════════════════════════════════════════════════════
+   LIGHT THEME OVERRIDE — append to very bottom of index.css
+   Overrides all dark CSS variables + key component classes
+   Zero deletions from existing code — pure additive override
+═══════════════════════════════════════════════════════════════ */
+
+/* ── 1. Re-map all CSS variables to light values ────────────── */
+:root {
+  /* Core surfaces */
+  --bg-base:      #f7f7f8;
+  --bg-elevated:  #ffffff;
+  --bg-input:     #ffffff;
+  --bg-user-msg:  #f3f4f6;
+  --bg-ai-msg:    #ffffff;
+
+  /* Accent — indigo replaces old purple/orange */
+  --accent:       #6366f1;
+  --accent-glow:  rgba(99,102,241,0.15);
+  --accent-sub:   rgba(99,102,241,0.08);
+
+  /* Text */
+  --text-pri:     #111827;
+  --text-sec:     #6b7280;
+  --text-muted:   #9ca3af;
+  --text-hint:    #d1d5db;
+
+  /* Borders */
+  --border:       #e5e7eb;
+  --border-focus: rgba(99,102,241,0.5);
+
+  /* Fonts — offline safe */
+  --font:         -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --mono:         ui-monospace, 'Cascadia Code', 'Fira Code', monospace;
+
+  /* Enterprise tokens — light override */
+  --e-bg:       #f7f7f8;
+  --e-surface:  rgba(0,0,0,0.025);
+  --e-surface2: rgba(0,0,0,0.04);
+  --e-border:   #e5e7eb;
+  --e-border2:  #d1d5db;
+  --e-text:     #111827;
+  --e-muted:    #6b7280;
+
+  /* Preview panel type badges — same hues, lighter bg */
+  --type-number-bg:   rgba(59,130,246,0.10);
+  --type-number-text: #3b82f6;
+  --type-string-bg:   rgba(16,185,129,0.10);
+  --type-string-text: #059669;
+  --type-date-bg:     rgba(245,158,11,0.10);
+  --type-date-text:   #d97706;
+  --type-bool-bg:     rgba(139,92,246,0.10);
+  --type-bool-text:   #7c3aed;
+}
+
+/* ── 2. Body + html ─────────────────────────────────────────── */
+body {
+  background: #f7f7f8 !important;
+  color: #111827 !important;
+}
+
+/* Remove dark radial gradient on .app::before */
+.app::before { background: none !important; }
+
+/* ── 3. Chatbox root ─────────────────────────────────────────── */
+.chatbox-root {
+  background: #ffffff !important;
+}
+
+/* ── 4. Welcome screen ──────────────────────────────────────── */
+.welcome-screen {
+  background: #ffffff;
+}
+
+.welcome-orb {
+  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  box-shadow: 0 8px 32px rgba(99,102,241,0.25) !important;
+}
+
+.welcome-greeting {
+  color: #6b7280 !important;
+}
+
+.welcome-question {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.03em !important;
+  color: #111827 !important;
+  /* remove gradient text */
+  background: none !important;
+  -webkit-background-clip: unset !important;
+  -webkit-text-fill-color: unset !important;
+  background-clip: unset !important;
+}
+
+.suggestion-chip {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+  border-radius: 10px !important;
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 10px 16px !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
+  transition: all 0.15s !important;
+}
+
+.suggestion-chip:hover {
+  background: #eef2ff !important;
+  border-color: #c7d2fe !important;
+  color: #4338ca !important;
+  transform: translateY(-1px) !important;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.1) !important;
+}
+
+/* ── 5. Messages container ──────────────────────────────────── */
+.messages-container {
+  background: #ffffff !important;
+  scrollbar-color: #e5e7eb transparent !important;
+}
+
+.messages-container::-webkit-scrollbar-thumb {
+  background: #e5e7eb !important;
+}
+
+/* ── 6. Message bubbles ─────────────────────────────────────── */
+/* User bubble — light gray pill */
+.message.user {
+  background: #f3f4f6 !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+  border-bottom-right-radius: 4px !important;
+  border-top-left-radius: 16px !important;
+  border-top-right-radius: 16px !important;
+  border-bottom-left-radius: 16px !important;
+}
+
+/* AI response — no bubble, plain document style */
+.message.assistant {
+  background: transparent !important;
+  border: none !important;
+  color: #111827 !important;
+  padding: 0 !important;
+}
+
+/* ── 7. Avatars ─────────────────────────────────────────────── */
+.ai-avatar {
+  background: linear-gradient(135deg, #6366f1, #818cf8) !important;
+  border: none !important;
+  color: #ffffff !important;
+  font-size: 10px !important;
+  font-weight: 700 !important;
+  border-radius: 50% !important;
+  box-shadow: 0 2px 8px rgba(99,102,241,0.25) !important;
+}
+
+.user-avatar {
+  background: #eef2ff !important;
+  border: 1.5px solid #c7d2fe !important;
+  color: #6366f1 !important;
+  font-weight: 700 !important;
+  font-size: 10px !important;
+}
+
+/* ── 8. File chip ───────────────────────────────────────────── */
+.file-chip {
+  background: #eef2ff !important;
+  border: 1px solid #c7d2fe !important;
+  color: #4f46e5 !important;
+}
+
+/* ── 9. Typing indicator ────────────────────────────────────── */
+.typing-indicator {
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 16px 16px 16px 4px !important;
+}
+
+.typing-text {
+  color: #9ca3af !important;
+}
+
+.typing-dots span {
+  background: #6366f1 !important;
+}
+
+/* ── 10. Input dock + shell ─────────────────────────────────── */
+.input-dock {
+  background: #ffffff !important;
+  border-top: 1px solid #e5e7eb !important;
+  padding: 12px 24px 20px !important;
+}
+
+.input-shell {
+  background: #ffffff !important;
+  border: 1.5px solid #e5e7eb !important;
+  border-radius: 16px !important;
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04) !important;
+  transition: border-color 0.15s, box-shadow 0.15s !important;
+}
+
+.input-shell.focused {
+  border-color: #6366f1 !important;
+  box-shadow: 0 4px 16px rgba(99,102,241,0.12), 0 1px 4px rgba(0,0,0,0.04) !important;
+}
+
+.file-preview-pill {
+  background: #f9fafb !important;
+  border-bottom: 1px solid #e5e7eb !important;
+  color: #6b7280 !important;
+}
+
+.chat-textarea {
+  color: #111827 !important;
+  font-size: 13px !important;
+  line-height: 1.6 !important;
+}
+
+.chat-textarea::placeholder {
+  color: #9ca3af !important;
+}
+
+.icon-btn {
+  color: #9ca3af !important;
+}
+
+.icon-btn:hover {
+  background: #f3f4f6 !important;
+  color: #374151 !important;
+}
+
+.send-btn {
+  background: #f3f4f6 !important;
+  color: #9ca3af !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.send-btn.active {
+  background: #6366f1 !important;
+  border-color: #6366f1 !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 12px rgba(99,102,241,0.3) !important;
+}
+
+.send-btn.active:hover {
+  background: #4f46e5 !important;
+  transform: scale(1.04) !important;
+}
+
+.input-hint {
+  color: #d1d5db !important;
+  font-size: 11px !important;
+  margin-top: 8px !important;
+  text-align: center !important;
+}
+
+.remove-file-btn {
+  color: #9ca3af !important;
+}
+.remove-file-btn:hover { color: #ef4444 !important; }
+
+/* ── 11. Dataset context pill ───────────────────────────────── */
+.dataset-context-pill {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #059669 !important;
+}
+
+.clear-dataset-btn {
+  color: #6ee7b7 !important;
+}
+.clear-dataset-btn:hover { color: #ef4444 !important; }
+
+/* ── 12. Markdown body (AI responses) ───────────────────────── */
+.md-body {
+  color: #111827 !important;
+  font-size: 13.5px !important;
+  line-height: 1.75 !important;
+}
+
+/* Override heading classes — bold text, no giant sizes */
+.md-h1 {
+  font-size: 1.1rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  border-bottom: 1px solid #f3f4f6 !important;
+  padding-bottom: 6px !important;
+  margin: 12px 0 6px !important;
+}
+
+.md-h2 {
+  font-size: 1.05rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  margin: 10px 0 5px !important;
+  border-bottom: none !important;
+}
+
+.md-h3 {
+  font-size: 1rem !important;
+  font-weight: 700 !important;
+  color: #111827 !important;
+  margin: 8px 0 4px !important;
+}
+
+.md-h4 {
+  font-size: 0.95rem !important;
+  font-weight: 600 !important;
+  color: #374151 !important;
+  margin: 6px 0 3px !important;
+}
+
+.md-p {
+  color: #374151 !important;
+  margin: 0 0 8px !important;
+  line-height: 1.7 !important;
+}
+
+.md-ul, .md-ol {
+  color: #374151 !important;
+}
+
+.md-li {
+  color: #374151 !important;
+}
+
+.md-li::marker {
+  color: #9ca3af !important;
+}
+
+.md-strong {
+  color: #111827 !important;
+  font-weight: 650 !important;
+}
+
+.md-em {
+  color: #6b7280 !important;
+}
+
+.md-code-inline {
+  background: #f3f4f6 !important;
+  border: 1px solid #e5e7eb !important;
+  color: #4f46e5 !important;
+  border-radius: 5px !important;
+  font-size: 12px !important;
+  padding: 1px 6px !important;
+}
+
+.md-pre {
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+  border-radius: 10px !important;
+  padding: 14px 16px !important;
+  margin: 8px 0 !important;
+}
+
+.md-code-block {
+  color: #374151 !important;
+  font-size: 12px !important;
+}
+
+.md-blockquote {
+  border-left: 3px solid #e5e7eb !important;
+  color: #9ca3af !important;
+  padding: 4px 0 4px 16px !important;
+}
+
+.md-hr {
+  border-top: 1px solid #f3f4f6 !important;
+}
+
+.md-link {
+  color: #6366f1 !important;
+  text-decoration-color: rgba(99,102,241,0.3) !important;
+}
+
+.md-link:hover {
+  color: #4f46e5 !important;
+  text-decoration-color: rgba(79,70,229,0.5) !important;
+}
+
+/* ── 13. Typing cursor ──────────────────────────────────────── */
+.typing-cursor {
+  background: #6366f1 !important;
+}
+
+/* ── 14. Message action buttons ─────────────────────────────── */
+.message-actions {
+  border-top: 1px solid #f3f4f6 !important;
+  margin-top: 8px !important;
+  padding-top: 6px !important;
+}
+
+.action-btn {
+  color: #9ca3af !important;
+}
+
+.action-btn:hover {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+}
+
+.action-btn.active-like {
+  color: #10b981 !important;
+  background: #ecfdf5 !important;
+}
+
+.action-btn.active-dislike {
+  color: #ef4444 !important;
+  background: #fef2f2 !important;
+}
+
+.action-btn.active-copy {
+  color: #6366f1 !important;
+  background: #eef2ff !important;
+}
+
+.action-divider {
+  background: #e5e7eb !important;
+}
+
+/* ── 15. Warning banner ─────────────────────────────────────── */
+.warning-banner {
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  color: #92400e !important;
+}
+
+/* ── 16. Preview panel ──────────────────────────────────────── */
+.preview-panel {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.preview-header {
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+.preview-file-icon {
+  background: #f3f4f6 !important;
+  color: #6b7280 !important;
+}
+
+.preview-file-name { color: #111827 !important; }
+.preview-file-meta { color: #9ca3af !important; }
+
+.preview-status-badge {
+  background: #ecfdf5 !important;
+  border: 1px solid #a7f3d0 !important;
+  color: #059669 !important;
+}
+
+.preview-meta-row { border-bottom: 1px solid #f3f4f6 !important; }
+.meta-stat { border-right: 1px solid #f3f4f6 !important; }
+.meta-value { color: #111827 !important; }
+.meta-label { color: #9ca3af !important; }
+
+.preview-tabs { border-bottom: 1px solid #f3f4f6 !important; }
+.preview-tab { color: #9ca3af !important; }
+.preview-tab:hover { color: #6b7280 !important; }
+.preview-tab.active { color: #111827 !important; border-bottom-color: #6366f1 !important; }
+
+.preview-table thead { background: #f9fafb !important; }
+.preview-table th { border-bottom: 1px solid #e5e7eb !important; }
+.th-name { color: #6b7280 !important; }
+.preview-table td { color: #374151 !important; border-bottom: 1px solid #f9fafb !important; }
+.preview-table tr:hover td { background: #f9fafb !important; }
+.null-cell { color: #d1d5db !important; }
+
+.preview-col-row { border-bottom: 1px solid #f9fafb !important; }
+.preview-col-row:hover { background: #f9fafb !important; }
+.col-name { color: #374151 !important; }
+.col-complete { color: #059669 !important; }
+.col-missing  { color: #d97706 !important; }
+
+.preview-footer {
+  border-top: 1px solid #f3f4f6 !important;
+  color: #9ca3af !important;
+}
+
+.preview-warnings {
+  background: #fffbeb !important;
+  border-bottom: 1px solid #fde68a !important;
+}
+.preview-warning-item { color: #92400e !important; }
+.warning-dot { background: #f59e0b !important; }
+
+/* ── 17. Analysis panel ─────────────────────────────────────── */
+.analysis-panel {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #111827 !important;
+}
+
+.analysis-header { border-bottom: 1px solid #f3f4f6 !important; }
+.analysis-title  { color: #111827 !important; }
+.analysis-subtitle { color: #9ca3af !important; }
+.analysis-icon   { color: #6366f1 !important; }
+
+.analysis-tabs { border-bottom: 1px solid #f3f4f6 !important; }
+.analysis-tab  { color: #9ca3af !important; }
+.analysis-tab:hover { color: #6b7280 !important; }
+.analysis-tab.active { color: #111827 !important; border-bottom-color: #6366f1 !important; }
+
+.stat-card {
+  background: #f9fafb !important;
+  border: 1px solid #e5e7eb !important;
+}
+.stat-card-value { color: #111827 !important; }
+.stat-card-label { color: #9ca3af !important; }
+.stat-card-sub   { color: #d1d5db !important; }
+
+.analysis-section-title { color: #9ca3af !important; }
+
+.type-chip--numeric  { background: rgba(59,130,246,0.08) !important;  color: #3b82f6 !important; border: 1px solid rgba(59,130,246,0.2) !important; }
+.type-chip--text     { background: rgba(16,185,129,0.08) !important;  color: #059669 !important; border: 1px solid rgba(16,185,129,0.2) !important; }
+.type-chip--datetime { background: rgba(245,158,11,0.08) !important;  color: #d97706 !important; border: 1px solid rgba(245,158,11,0.2) !important; }
+.type-chip--boolean  { background: rgba(139,92,246,0.08) !important;  color: #7c3aed !important; border: 1px solid rgba(139,92,246,0.2) !important; }
+
+.outlier-row {
+  background: #fef2f2 !important;
+  border: 1px solid #fecaca !important;
+}
+.outlier-col   { color: #374151 !important; }
+.outlier-count { color: #ef4444 !important; }
+
+.duplicate-warning {
+  background: #fffbeb !important;
+  border: 1px solid #fde68a !important;
+  color: #92400e !important;
+}
+
+.numeric-table thead { background: #f9fafb !important; }
+.numeric-table th    { color: #9ca3af !important; border-bottom: 1px solid #e5e7eb !important; }
+.numeric-table td    { color: #374151 !important; border-bottom: 1px solid #f9fafb !important; }
+.numeric-col-name    { color: #111827 !important; }
+.outlier-badge       { background: #fef2f2 !important; color: #ef4444 !important; }
+.clean-badge         { color: #d1d5db !important; }
+
+.missing-total        { color: #ef4444 !important; }
+.missing-completeness { color: #059669 !important; }
+.all-complete         { color: #059669 !important; }
+.missing-col-name     { color: #374151 !important; }
+.missing-col-count    { color: #9ca3af !important; }
+.missing-bar-track    { background: #f3f4f6 !important; }
+.missing-bar-label    { color: #9ca3af !important; }
+
+.cat-col-block { background: #f9fafb !important; border: 1px solid #e5e7eb !important; }
+.cat-col-name  { color: #111827 !important; }
+.cat-unique    { color: #9ca3af !important; }
+.cat-value-label { color: #374151 !important; }
+.cat-bar-wrap    { background: #f3f4f6 !important; }
+.cat-bar-fill    { background: rgba(99,102,241,0.45) !important; }
+.cat-value-count { color: #9ca3af !important; }
+
+.date-col-block  { background: #f9fafb !important; border: 1px solid #e5e7eb !important; }
+.date-col-name   { color: #111827 !important; }
+.date-stat-label { color: #9ca3af !important; }
+.date-stat-value { color: #d97706 !important; }
+.date-meta       { color: #9ca3af !important; }
+.date-granularity { color: #6366f1 !important; }
+.date-nulls       { color: #ef4444 !important; }
+
+/* ── 18. Viz suggestions card ───────────────────────────────── */
+.viz-suggestions-card {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.viz-sugg-header {
+  border-bottom: 1px solid #f3f4f6 !important;
+}
+
+.viz-sugg-icon  { color: #6366f1 !important; }
+.viz-sugg-title { color: #9ca3af !important; }
+
+.viz-open-btn {
+  background: #eef2ff !important;
+  border: 1px solid #c7d2fe !important;
+  color: #4f46e5 !important;
+}
+.viz-open-btn:hover {
+  background: #c7d2fe !important;
+  border-color: #6366f1 !important;
+}
+
+.viz-sugg-item:hover { background: #f9fafb !important; }
+.viz-sugg-chart-label { color: #374151 !important; }
+.viz-sugg-reason      { color: #9ca3af !important; }
+
+/* ── 19. App layout wrappers ────────────────────────────────── */
+.app-layout { background: #f7f7f8 !important; }
+.app-main   { background: #ffffff !important; }
+
+/* ── 20. Scrollbars — light ─────────────────────────────────── */
+::-webkit-scrollbar-thumb {
+  background: #d1d5db !important;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af !important;
+}
+
+* {
+  scrollbar-color: #d1d5db transparent !important;
+}
+
+/* ── 21. Sidebar classes (legacy .sidebar if still used) ────── */
+.sidebar {
+  background: #f9fafb !important;
+  border-right: 1px solid #e5e7eb !important;
+}
+
+.sb-brand     { color: #111827 !important; }
+.sb-nav-btn   { color: #6b7280 !important; }
+.sb-nav-btn:hover:not(.disabled) { background: #f3f4f6 !important; color: #111827 !important; }
+.sb-nav-btn.active { background: #eef2ff !important; color: #4f46e5 !important; }
+.sb-divider   { background: #e5e7eb !important; }
+.sb-section-label { color: #9ca3af !important; }
+.sb-item-title    { color: #374151 !important; }
+.sb-chat-item.active .sb-item-title { color: #111827 !important; }
+.sb-item-time     { color: #d1d5db !important; }
+.sb-chat-item:hover     { background: #f3f4f6 !important; }
+.sb-chat-item.active    { background: #eef2ff !important; }
+.sb-active-line         { background: #6366f1 !important; }
+.sb-action-btn:hover    { background: #f3f4f6 !important; color: #374151 !important; }
+.sb-action-delete:hover { background: #fef2f2 !important; color: #ef4444 !important; }
+.sb-rename-input { background: #f9fafb !important; border: 1px solid #c7d2fe !important; color: #111827 !important; }
+.sb-empty        { color: #d1d5db !important; }
+.sb-toggle-btn   { color: #9ca3af !important; }
+.sb-toggle-btn:hover { background: #f3f4f6 !important; color: #374151 !important; }
+.sb-new-chat-btn {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+  color: #374151 !important;
+}
+.sb-new-chat-btn:hover {
+  background: #f3f4f6 !important;
+  border-color: #d1d5db !important;
+  color: #111827 !important;
+}
+
+/* ── 22. Project detail + dashboard pages ───────────────────── */
+.db-canvas-root {
+  background: #f7f7f8 !important;
+}
+.db-canvas-header {
+  border-bottom: 1px solid #e5e7eb !important;
+  background: #ffffff !important;
+}
+.db-canvas-title { color: #111827 !important; }
+.db-widget {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+.db-widget:hover { border-color: #d1d5db !important; }
+.db-kpi-label { color: #6b7280 !important; }
+.db-kpi-value { color: #111827 !important; }
+.db-chart-title { color: #6b7280 !important; }
+.db-widget-lib {
+  background: #f9fafb !important;
+  border-left: 1px solid #e5e7eb !important;
+}
+.db-lib-label { color: #374151 !important; }
+.db-lib-drag  { color: #9ca3af !important; }
+.db-lib-item:hover { background: #f3f4f6 !important; }
+.db-canvas-empty {
+  border: 2px dashed #e5e7eb !important;
+}
+.db-empty-title { color: #9ca3af !important; }
+.db-empty-hint  { color: #d1d5db !important; }
+
+/* ── 23. Prevent any lingering dark backgrounds on wrappers ─── */
+.vb-root,
+.rt-root,
+.ins-root {
+  background: #f7f7f8 !important;
+}
+
+.vb-header,
+.rt-header {
+  border-bottom: 1px solid #e5e7eb !important;
+  background: #ffffff !important;
+}
+
+.vb-slot {
+  border-color: #e5e7eb !important;
+  background: #f9fafb !important;
+}
+
+.vb-slot--dragover {
+  border-color: #6366f1 !important;
+  background: #eef2ff !important;
+}
+
+.vb-right-sidebar {
+  background: #f9fafb !important;
+}
+
+.vb-right-sidebar-wrap--open {
+  border-left-color: #e5e7eb !important;
+}
+
+.vb-chart-card {
+  background: #ffffff !important;
+  border: 1px solid #e5e7eb !important;
+}
+
+.vb-chart-card:hover {
+  background: #f9fafb !important;
+  border-color: #d1d5db !important;
+}
+
+.vb-chart-card-label { color: #374151 !important; }
+.vb-chart-card-desc  { color: #9ca3af !important; }
+.vb-chart-card:hover .vb-chart-card-desc { color: #6366f1 !important; }
+
+.vb-rs-title { color: #6b7280 !important; }
+.vb-rs-hint  { color: #9ca3af !important; }
+.vb-chart-type-badge { color: #9ca3af !important; }
+.vb-chart-subtitle   { color: #374151 !important; }
+
+/* ── 24. Input dock centering fix ───────────────────────────── */
+/* Remove max-width centering — full-width floating bar */
+.input-dock {
+  max-width: 100% !important;
+  margin: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.messages-inner {
+  max-width: 800px !important;
+  margin: 0 auto !important;
+}
