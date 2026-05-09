@@ -11,7 +11,9 @@ import Sidebar from '../components/sidebar/Sidebar'
 const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif"
 
 const T = {
-  pageBg:    '#f7f7f8',
+  // CRITICAL: pageBg must be pure white to match the rail active pill
+  // Any other value (e.g. #f7f7f8) will break the liquid cut-out illusion
+  pageBg:    '#ffffff',
   topbar:    '#ffffff',
   border:    '#ebebed',
   text:      '#0f1117',
