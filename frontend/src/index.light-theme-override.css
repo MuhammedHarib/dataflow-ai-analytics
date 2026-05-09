@@ -731,3 +731,7 @@ body {
   max-width: 800px !important;
   margin: 0 auto !important;
 }
+
+/* ── 25. Cleanup ───────────────────────────────────────────── */
+/* Removed [data-rail] and indigo-override blocks that were conflicting 
+   with the Sidebar's internal "liquid cut-out" styling logic. */
