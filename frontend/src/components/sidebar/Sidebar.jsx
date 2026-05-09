@@ -1,8 +1,8 @@
 // src/components/sidebar/Sidebar.jsx
-// "Liquid cut-out" active rail effect
-// — Indigo rail bleeds seamlessly into white panel via concave corners
-// — box-shadow trick on ::before / ::after pseudo-elements
-// — White block flush to RIGHT edge of rail, icon turns indigo
+// Liquid cut-out active rail effect — matches teal reference exactly
+// White pill bleeds flush to RIGHT edge of rail
+// Two concave quarter-circle corners carved from the rail color
+// Rail has overflow:hidden — corners rendered OUTSIDE via portal-like wrappers
 
 import React, { useState, useEffect } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
@@ -13,70 +13,56 @@ import {
 } from 'lucide-react'
 import { projectsApi } from '../../api/client'
 
-// ─── Core measurements ────────────────────────────────────────────
-const RAIL_W   = 64    // px — icon rail width
-const PANEL_W  = 228   // px — white text panel width
-const ITEM_H   = 52    // px — height of each rail slot
-const PILL_H   = 44    // px — height of white pill inside slot
-const CORNER_R = 14    // px — radius of concave corner circles
+// ─── Constants ────────────────────────────────────────────────────
+const RAIL_W  = 64
+const PANEL_W = 228
+const RAIL_BG = '#6366f1'
+const WHITE   = '#ffffff'
+const FONT    = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
-// ─── Colors ───────────────────────────────────────────────────────
-const RAIL   = '#6366f1'   // indigo — must match AppShell content bg exactly
-const WHITE  = '#ffffff'   // active pill + panel bg — MUST be same as page bg
-const FONT   = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+// Pill geometry — tune these two numbers to match the reference
+const PILL_H      = 48   // height of the white active block
+const PILL_RADIUS = 14   // border-radius of the left side of the pill
+const CORNER_SIZE = 20   // size of each concave corner square
 
 const P = {
-  bg:       WHITE,
-  border:   '#ebebed',
-  text:     '#111827',
-  dim:      '#a1a1aa',
-  hov:      '#eef2ff',
-  hovTx:    '#4338ca',
-  active:   RAIL,
-  activeTx: WHITE,
-  accent:   RAIL,
-  accentLt: '#eef2ff',
-  accentBd: '#c7d2fe',
-  divider:  '#f0f0f2',
+  bg: WHITE, border: '#ebebed',
+  text: '#111827', dim: '#a1a1aa',
+  hov: '#eef2ff', hovTx: '#4338ca',
+  active: RAIL_BG, activeTx: WHITE,
+  accent: RAIL_BG, accentLt: '#eef2ff', accentBd: '#c7d2fe',
+  divider: '#f0f0f2',
 }
 
-// ─── Injected CSS ─────────────────────────────────────────────────
-// The concave-corner trick explained:
+// ─── CSS string ───────────────────────────────────────────────────
+// Key insight from the reference image:
+//   • The rail has overflow:hidden — nothing bleeds outside it
+//   • The white pill IS inside the rail, flush right, with left radius only
+//   • The two "concave corners" are OUTSIDE the rail div entirely —
+//     they sit in the white content area, just to the right of the rail
+//   • Each corner = a div with border-radius:50% and a box-shadow
+//     in the rail color that fills the outside of the curve
 //
-//  ┌──────────┐  ← rail top
-//  │          │
-//  │    ◉     │  ← non-active icon, transparent bg
-//  │          │
-//  │  ╭──────── ← HERE: concave top corner
-//  │  │ ◉    │  ← active icon, white bg, icon = indigo
-//  │  ╰──────── ← HERE: concave bottom corner
-//  │          │
-//
-// Each corner is a tiny div (CORNER_R × CORNER_R) with:
-//   background: transparent
-//   border-radius: 50%
-//   box-shadow: Xpx Ypx 0 Xpx ${RAIL}
-//
-// The shadow "fills" the outside of the circle with rail color,
-// making it look like the rail is bending inward.
+// Since we can't use true pseudo-elements in React inline styles,
+// we inject a <style> block and use className on the elements.
 
 const CSS = `
-  /* ── Slot wrapper — full-width, fixed height ─────────────────── */
-  .rs-slot {
+  /* ── Rail item slot ──────────────────────────────────────────── */
+  .ri-slot {
     position: relative;
     width: 100%;
-    height: ${ITEM_H}px;
     display: flex;
     align-items: center;
     justify-content: center;
+    height: ${PILL_H + 8}px;
     flex-shrink: 0;
   }
 
-  /* ── Rail button ─────────────────────────────────────────────── */
-  .rs-btn {
+  /* ── Button base ─────────────────────────────────────────────── */
+  .ri-btn {
     position: relative;
     width: 100%;
-    height: ${ITEM_H}px;
+    height: ${PILL_H}px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -84,160 +70,156 @@ const CSS = `
     outline: none;
     cursor: pointer;
     background: transparent;
-    z-index: 1;
     padding: 0;
-    transition: color 0.2s ease;
+    z-index: 1;
     color: rgba(255,255,255,0.55);
+    transition: color 0.2s;
+    font-family: ${FONT};
   }
 
-  .rs-btn:hover .rs-icon-box {
-    background: rgba(255,255,255,0.14);
-    transform: scale(1.05);
-  }
-
-  /* ── Icon box — the rounded square holding the icon ──────────── */
-  .rs-icon-box {
+  /* Icon wrapper — the visible rounded square */
+  .ri-icon {
     width: 38px;
     height: 38px;
     border-radius: 11px;
     display: flex;
     align-items: center;
     justify-content: center;
-    transition: background 0.2s ease, transform 0.15s ease;
     position: relative;
-    z-index: 2;
+    z-index: 3;
+    transition: background 0.2s, transform 0.15s;
+    color: rgba(255,255,255,0.55);
   }
 
-  /* ── ACTIVE STATE ─────────────────────────────────────────────── */
-
-  /* White pill — extends flush to the RIGHT edge of the rail
-     Left side has border-radius, right side is flat (0px) so it
-     merges with the white panel seamlessly */
-  .rs-btn.rs-active {
-    color: ${RAIL} !important;
+  .ri-btn:hover:not(.ri-active) .ri-icon {
+    background: rgba(255,255,255,0.13);
+    color: rgba(255,255,255,0.92);
+    transform: scale(1.06);
   }
 
-  .rs-btn.rs-active .rs-icon-box {
+  /* ── Active: white pill flush to right ───────────────────────── */
+  /* The pill is drawn with ::before on the button.
+     It fills from left:6px to right:0 (flush with rail edge).
+     Only left corners are rounded — right side is perfectly flat
+     so it butts against the white panel and they look continuous. */
+
+  .ri-btn.ri-active {
+    color: ${RAIL_BG};
+  }
+
+  .ri-btn.ri-active .ri-icon {
     background: transparent !important;
     transform: none !important;
-    color: ${RAIL};
+    color: ${RAIL_BG} !important;
   }
 
-  /* The white block itself */
-  .rs-btn.rs-active::before {
+  .ri-btn.ri-active::before {
     content: '';
     position: absolute;
-    top: 50%;
-    transform: translateY(-50%);
-    /* flush to right edge, indented from left */
-    right: 0px;
+    top: 0; bottom: 0;
     left: 8px;
-    height: ${PILL_H}px;
+    right: 0px;                    /* flush to right edge of rail */
     background: ${WHITE};
-    /* round only left side */
-    border-radius: ${CORNER_R}px 0 0 ${CORNER_R}px;
+    border-radius: ${PILL_RADIUS}px 0 0 ${PILL_RADIUS}px;
     z-index: 0;
-    /* subtle shadow to lift it off the rail */
-    box-shadow: -2px 0 8px rgba(0,0,0,0.06);
+    /* NO box-shadow here — keep it clean */
+  }
+
+  /* Transition for the pill appearing */
+  .ri-btn::before {
+    transition: opacity 0.22s cubic-bezier(.4,0,.2,1),
+                transform 0.22s cubic-bezier(.4,0,.2,1);
+  }
+  .ri-btn:not(.ri-active)::before {
+    opacity: 0;
+    pointer-events: none;
+  }
+  .ri-btn.ri-active::before {
+    opacity: 1;
   }
 
   /* ── Concave corner elements ─────────────────────────────────── */
-  /* These are injected as sibling divs (not pseudo-elements)
-     because React can't use ::before/::after on arbitrary siblings.
-     Each is a transparent circle with a thick box-shadow in RAIL color */
+  /* These live OUTSIDE the rail in the white area.
+     They're positioned absolutely relative to the rail+panel wrapper.
+     Each is a square with border-radius:50% and a box-shadow
+     in the RAIL color that "fills" the outside of the quarter circle,
+     creating the illusion of a concave bite. */
 
-  .rs-corner {
+  .ri-corner {
     position: absolute;
     right: 0;
-    width: ${CORNER_R * 2}px;
-    height: ${CORNER_R * 2}px;
+    width: ${CORNER_SIZE}px;
+    height: ${CORNER_SIZE}px;
     background: transparent;
     border-radius: 50%;
-    z-index: 4;
+    z-index: 10;
     pointer-events: none;
+    /* transitions match the pill */
+    transition: opacity 0.22s cubic-bezier(.4,0,.2,1);
   }
 
-  /* Top corner — sits just above the white pill */
-  .rs-corner-top {
-    /* position: bottom of corner circle = top of pill */
+  .ri-corner.ri-hidden { opacity: 0; }
+  .ri-corner.ri-show   { opacity: 1; }
+
+  /* Top corner: positioned so its BOTTOM edge aligns with TOP of pill
+     Shadow goes DOWN-RIGHT → fills the top-right concave gap */
+  .ri-corner-top {
     bottom: calc(50% + ${PILL_H / 2}px);
-    /* Shadow shoots DOWN-RIGHT, filling the gap with rail color */
-    box-shadow: ${CORNER_R}px ${CORNER_R}px 0 ${CORNER_R}px ${RAIL};
+    box-shadow: ${CORNER_SIZE / 2}px ${CORNER_SIZE / 2}px 0 ${CORNER_SIZE / 2}px ${RAIL_BG};
   }
 
-  /* Bottom corner — sits just below the white pill */
-  .rs-corner-bottom {
-    /* position: top of corner circle = bottom of pill */
+  /* Bottom corner: positioned so its TOP edge aligns with BOTTOM of pill
+     Shadow goes UP-RIGHT → fills the bottom-right concave gap */
+  .ri-corner-bottom {
     top: calc(50% + ${PILL_H / 2}px);
-    /* Shadow shoots UP-RIGHT */
-    box-shadow: ${CORNER_R}px -${CORNER_R}px 0 ${CORNER_R}px ${RAIL};
-  }
-
-  /* ── Smooth transition when switching active items ───────────── */
-  .rs-btn::before {
-    transition: opacity 0.25s ease, transform 0.25s ease;
-  }
-  .rs-btn:not(.rs-active)::before {
-    opacity: 0;
-    transform: translateY(-50%) scaleX(0.7);
-  }
-  .rs-btn.rs-active::before {
-    opacity: 1;
-    transform: translateY(-50%) scaleX(1);
-  }
-
-  .rs-corner {
-    transition: opacity 0.25s ease;
-  }
-  .rs-corner.rs-corner-hidden {
-    opacity: 0;
-  }
-  .rs-corner.rs-corner-visible {
-    opacity: 1;
+    box-shadow: ${CORNER_SIZE / 2}px -${CORNER_SIZE / 2}px 0 ${CORNER_SIZE / 2}px ${RAIL_BG};
   }
 `
 
-// ─── Rail slot (button + corners) ────────────────────────────────
+// ─── RailBtn ──────────────────────────────────────────────────────
+// The slot div must be position:relative for the corner divs.
+// The corner divs sit at right:0 of the slot — which aligns with
+// the right edge of the rail div. Their box-shadows extend rightward
+// into the white panel area, completing the concave illusion.
 function RailBtn({ icon: Icon, active, onClick, tooltip }) {
   const [hov, setHov] = useState(false)
   return (
-    <div className="rs-slot">
-      {/* Top concave corner */}
-      <div className={`rs-corner rs-corner-top ${active ? 'rs-corner-visible' : 'rs-corner-hidden'}`} />
+    <div className="ri-slot">
+      {/* ── Top concave corner ───────────────────────────────── */}
+      <div className={`ri-corner ri-corner-top ${active ? 'ri-show' : 'ri-hidden'}`} />
 
+      {/* ── The rail button ──────────────────────────────────── */}
       <button
         title={tooltip}
         onClick={onClick}
         onMouseEnter={() => setHov(true)}
         onMouseLeave={() => setHov(false)}
-        className={`rs-btn${active ? ' rs-active' : ''}`}
+        className={`ri-btn${active ? ' ri-active' : ''}`}
       >
         <div
-          className="rs-icon-box"
+          className="ri-icon"
           style={{
             color: active
-              ? RAIL
-              : hov
-                ? 'rgba(255,255,255,0.92)'
-                : 'rgba(255,255,255,0.55)',
+              ? RAIL_BG
+              : hov ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.55)',
           }}
         >
           <Icon size={19} strokeWidth={active ? 2.2 : 1.8} />
         </div>
       </button>
 
-      {/* Bottom concave corner */}
-      <div className={`rs-corner rs-corner-bottom ${active ? 'rs-corner-visible' : 'rs-corner-hidden'}`} />
+      {/* ── Bottom concave corner ────────────────────────────── */}
+      <div className={`ri-corner ri-corner-bottom ${active ? 'ri-show' : 'ri-hidden'}`} />
     </div>
   )
 }
 
-// ─── Panel nav row ────────────────────────────────────────────────
+// ─── Panel row ────────────────────────────────────────────────────
 function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, indent }) {
   const [hov, setHov] = useState(false)
   const pl = 12 + depth * 14 + (indent ? 10 : 0)
-  const bg    = active ? P.active  : hov ? P.hov  : 'transparent'
-  const color = active ? P.activeTx : hov ? P.hovTx : dim ? P.dim : P.text
+  const bg    = active ? P.active   : hov ? P.hov    : 'transparent'
+  const color = active ? P.activeTx : hov ? P.hovTx  : dim ? P.dim : P.text
 
   return (
     <button
@@ -246,18 +228,17 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, i
       onMouseLeave={() => setHov(false)}
       style={{
         width: '100%', display: 'flex', alignItems: 'center', gap: 8,
-        padding: `6px ${10}px 6px ${pl}px`,
+        padding: `6px 10px 6px ${pl}px`,
         borderRadius: 9, border: 'none', marginBottom: 2,
         background: bg, color,
-        cursor: 'pointer', textAlign: 'left',
+        cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
         transition: 'background 0.15s, color 0.15s',
-        fontFamily: FONT,
         boxShadow: active ? '0 2px 8px rgba(99,102,241,0.22)' : 'none',
       }}
     >
       {Icon && (
         <Icon size={13} strokeWidth={active ? 2.2 : 1.75}
-          style={{ flexShrink: 0, opacity: active ? 1 : dim ? 0.45 : hov ? 0.85 : 0.6 }} />
+          style={{ flexShrink: 0, opacity: active ? 1 : dim ? 0.45 : hov ? 0.85 : 0.65 }} />
       )}
       <span style={{
         fontSize: 13, fontWeight: active ? 600 : dim ? 400 : 500,
@@ -280,7 +261,7 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, i
 
 // ─── Section header ───────────────────────────────────────────────
 function SectionHd({ icon: Icon, label, open, onToggle, onAdd }) {
-  const [hov, setHov] = useState(false)
+  const [hov, setHov]       = useState(false)
   const [addHov, setAddHov] = useState(false)
   return (
     <div
@@ -303,7 +284,8 @@ function SectionHd({ icon: Icon, label, open, onToggle, onAdd }) {
       {Icon && <Icon size={11} strokeWidth={2} style={{ color: P.dim, flexShrink: 0 }} />}
       <span style={{
         fontSize: 10, fontWeight: 600, color: P.dim,
-        textTransform: 'uppercase', letterSpacing: '0.07em', flex: 1, fontFamily: FONT,
+        textTransform: 'uppercase', letterSpacing: '0.07em',
+        flex: 1, fontFamily: FONT,
       }}>{label}</span>
       {onAdd && (
         <button
@@ -317,9 +299,7 @@ function SectionHd({ icon: Icon, label, open, onToggle, onAdd }) {
             cursor: 'pointer', display: 'flex', alignItems: 'center',
             justifyContent: 'center', transition: 'all 0.12s', flexShrink: 0,
           }}
-        >
-          <Plus size={11} strokeWidth={2.5} />
-        </button>
+        ><Plus size={11} strokeWidth={2.5} /></button>
       )}
     </div>
   )
@@ -385,11 +365,9 @@ function ProjectNode({ project, activePage }) {
           borderLeft: `1px solid ${P.divider}`,
           marginTop: 2, marginBottom: 4,
         }}>
-          <SectionHd
-            icon={LayoutDashboard} label="Dashboards"
+          <SectionHd icon={LayoutDashboard} label="Dashboards"
             open={openDash} onToggle={() => setOpenDash(o => !o)}
-            onAdd={() => navigate(`/projects/${project.id}/dashboards/new`)}
-          />
+            onAdd={() => navigate(`/projects/${project.id}/dashboards/new`)} />
           {openDash && (
             <>
               {summary?.dashboards?.length
@@ -406,11 +384,9 @@ function ProjectNode({ project, activePage }) {
             </>
           )}
 
-          <SectionHd
-            icon={MessageSquare} label="Chats"
+          <SectionHd icon={MessageSquare} label="Chats"
             open={openChats} onToggle={() => setOpenChats(o => !o)}
-            onAdd={() => navigate(`/projects/${project.id}/chat`)}
-          />
+            onAdd={() => navigate(`/projects/${project.id}/chat`)} />
           {openChats && (
             <>
               {summary?.chats?.length
@@ -460,18 +436,18 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
   return (
     <div style={{ display: 'flex', height: '100vh', flexShrink: 0, fontFamily: FONT }}>
 
-      {/* Scoped CSS */}
       <style>{CSS}</style>
 
       {/* ══ RAIL ════════════════════════════════════════════════════ */}
+      {/* CRITICAL: overflow must be 'visible' so the corner box-shadows
+          bleed rightward into the white panel area */}
       <div style={{
         width: RAIL_W, minWidth: RAIL_W,
-        background: RAIL,
+        background: RAIL_BG,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center',
         paddingTop: 14, paddingBottom: 12,
         position: 'relative',
-        // CRITICAL: overflow visible so corner elements can bleed right
         overflow: 'visible',
         zIndex: 2, flexShrink: 0,
       }}>
@@ -489,7 +465,6 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
           <BarChart3 size={18} strokeWidth={2.2} style={{ color: '#fff' }} />
         </div>
 
-        {/* Nav items */}
         <RailBtn icon={MessageSquare} active={isChat}     onClick={() => navigate('/')}         tooltip="AI Workspace" />
         <RailBtn icon={LayoutGrid}    active={isProjects} onClick={() => navigate('/projects')} tooltip="Projects" />
 
@@ -536,20 +511,11 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
       }}>
         {!collapsed && (
           <>
-            {/* Brand */}
-            <div style={{
-              padding: '18px 16px 14px',
-              borderBottom: `1px solid ${P.divider}`, flexShrink: 0,
-            }}>
-              <div style={{ fontSize: 15, fontWeight: 700, color: P.text,
-                letterSpacing: '-0.03em', lineHeight: 1, fontFamily: FONT }}>DataFlow</div>
-              <div style={{ fontSize: 10, fontWeight: 500, color: P.dim,
-                letterSpacing: '0.09em', marginTop: 3, textTransform: 'uppercase', fontFamily: FONT }}>
-                AI Analytics
-              </div>
+            <div style={{ padding: '18px 16px 14px', borderBottom: `1px solid ${P.divider}`, flexShrink: 0 }}>
+              <div style={{ fontSize: 15, fontWeight: 700, color: P.text, letterSpacing: '-0.03em', lineHeight: 1, fontFamily: FONT }}>DataFlow</div>
+              <div style={{ fontSize: 10, fontWeight: 500, color: P.dim, letterSpacing: '0.09em', marginTop: 3, textTransform: 'uppercase', fontFamily: FONT }}>AI Analytics</div>
             </div>
 
-            {/* Top nav */}
             <div style={{ padding: '10px 8px 6px', flexShrink: 0 }}>
               <PanelRow icon={MessageSquare} label="AI Workspace" active={isChat}     onClick={() => navigate('/')} />
               <PanelRow icon={LayoutGrid}    label="Projects"     active={isProjects} onClick={() => navigate('/projects')} />
@@ -557,31 +523,18 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
 
             <Divider />
 
-            {/* Projects label */}
             <div style={{ padding: '4px 14px 6px', flexShrink: 0 }}>
-              <span style={{ fontSize: 10, fontWeight: 700, color: P.dim,
-                textTransform: 'uppercase', letterSpacing: '0.09em', fontFamily: FONT }}>
-                Projects
-              </span>
+              <span style={{ fontSize: 10, fontWeight: 700, color: P.dim, textTransform: 'uppercase', letterSpacing: '0.09em', fontFamily: FONT }}>Projects</span>
             </div>
 
-            {/* Project tree */}
-            <div style={{
-              flex: 1, overflowY: 'auto', padding: '0 8px 8px',
-              scrollbarWidth: 'thin', scrollbarColor: `${P.divider} transparent`,
-            }}>
+            <div style={{ flex: 1, overflowY: 'auto', padding: '0 8px 8px', scrollbarWidth: 'thin', scrollbarColor: `${P.divider} transparent` }}>
               {loading
                 ? <p style={{ fontSize: 12, color: P.dim, padding: '8px 12px', margin: 0, fontFamily: FONT }}>Loading…</p>
                 : projects.length === 0
-                  ? <p style={{ fontSize: 12, color: P.dim, padding: '8px 12px', lineHeight: 1.7, margin: 0, fontFamily: FONT }}>
-                      No projects yet.<br />Create your first one.
-                    </p>
-                  : projects.map(p => (
-                      <ProjectNode key={p.id} project={p} activePage={activePage} />
-                    ))
+                  ? <p style={{ fontSize: 12, color: P.dim, padding: '8px 12px', lineHeight: 1.7, margin: 0, fontFamily: FONT }}>No projects yet.<br />Create your first one.</p>
+                  : projects.map(p => <ProjectNode key={p.id} project={p} activePage={activePage} />)
               }
 
-              {/* New project */}
               <button
                 onClick={() => navigate('/projects')}
                 style={{
@@ -601,7 +554,6 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
 
             <Divider />
 
-            {/* Bottom */}
             <div style={{ padding: '4px 8px 10px', flexShrink: 0 }}>
               <PanelRow icon={Settings} label="Settings" active={false} onClick={() => {}} />
             </div>

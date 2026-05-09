@@ -605,10 +605,16 @@ body {
 }
 
 /* ── 21. Sidebar classes (legacy .sidebar if still used) ────── */
+/* NOTE: The new Sidebar.jsx uses inline styles — these only affect
+   legacy CSS-class-based sidebar elements, not the rail div */
 .sidebar {
   background: #f9fafb !important;
   border-right: 1px solid #e5e7eb !important;
 }
+
+/* Rail rules removed — Sidebar.jsx now handles all rail styles
+   via inline styles and scoped CSS class injection (<style> tag).
+   No !important overrides needed here. */
 
 .sb-brand     { color: #111827 !important; }
 .sb-nav-btn   { color: #6b7280 !important; }
@@ -731,7 +737,3 @@ body {
   max-width: 800px !important;
   margin: 0 auto !important;
 }
-
-/* ── 25. Cleanup ───────────────────────────────────────────── */
-/* Removed [data-rail] and indigo-override blocks that were conflicting 
-   with the Sidebar's internal "liquid cut-out" styling logic. */
