@@ -1,10 +1,11 @@
 // src/components/sidebar/Sidebar.jsx
-// Liquid cut-out active rail effect — matches teal reference exactly
-// White pill bleeds flush to RIGHT edge of rail
-// Two concave quarter-circle corners carved from the rail color
-// Rail has overflow:hidden — corners rendered OUTSIDE via portal-like wrappers
+// Liquid cut-out active rail effect
+// Architecture: The rail itself is a <canvas>-free approach.
+// The active "cut-out" shape is drawn as an ABSOLUTELY POSITIONED
+// white SVG shape that sits BETWEEN the rail and the panel,
+// with the icon rendered on top. No overflow issues.
 
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import {
   BarChart3, MessageSquare, LayoutGrid, LayoutDashboard,
@@ -13,56 +14,46 @@ import {
 } from 'lucide-react'
 import { projectsApi } from '../../api/client'
 
-// ─── Constants ────────────────────────────────────────────────────
-const RAIL_W  = 64
-const PANEL_W = 228
-const RAIL_BG = '#6366f1'
-const WHITE   = '#ffffff'
-const FONT    = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+// ─── Layout constants ─────────────────────────────────────────────
+const RAIL_W    = 64    // icon rail width px
+const PANEL_W   = 228   // white text panel width px
+const SLOT_H    = 56    // height of each nav slot px
+const PILL_H    = 48    // height of white active pill px
+const RADIUS    = 14    // left border-radius of pill px
+const CURVE     = 16    // concave corner curve radius px
 
-// Pill geometry — tune these two numbers to match the reference
-const PILL_H      = 48   // height of the white active block
-const PILL_RADIUS = 14   // border-radius of the left side of the pill
-const CORNER_SIZE = 20   // size of each concave corner square
+// ─── Colors ───────────────────────────────────────────────────────
+const RAIL_COLOR = '#6366f1'
+const WHITE      = '#ffffff'
+const FONT       = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
 const P = {
   bg: WHITE, border: '#ebebed',
   text: '#111827', dim: '#a1a1aa',
   hov: '#eef2ff', hovTx: '#4338ca',
-  active: RAIL_BG, activeTx: WHITE,
-  accent: RAIL_BG, accentLt: '#eef2ff', accentBd: '#c7d2fe',
+  active: RAIL_COLOR, activeTx: WHITE,
+  accent: RAIL_COLOR, accentLt: '#eef2ff', accentBd: '#c7d2fe',
   divider: '#f0f0f2',
 }
 
-// ─── CSS string ───────────────────────────────────────────────────
-// Key insight from the reference image:
-//   • The rail has overflow:hidden — nothing bleeds outside it
-//   • The white pill IS inside the rail, flush right, with left radius only
-//   • The two "concave corners" are OUTSIDE the rail div entirely —
-//     they sit in the white content area, just to the right of the rail
-//   • Each corner = a div with border-radius:50% and a box-shadow
-//     in the rail color that fills the outside of the curve
-//
-// Since we can't use true pseudo-elements in React inline styles,
-// we inject a <style> block and use className on the elements.
-
+// ─── CSS injected once ────────────────────────────────────────────
 const CSS = `
-  /* ── Rail item slot ──────────────────────────────────────────── */
-  .ri-slot {
+  .rail-slot {
     position: relative;
     width: 100%;
+    height: ${SLOT_H}px;
     display: flex;
     align-items: center;
     justify-content: center;
-    height: ${PILL_H + 8}px;
     flex-shrink: 0;
   }
 
-  /* ── Button base ─────────────────────────────────────────────── */
-  .ri-btn {
+  .rail-btn {
     position: relative;
-    width: 100%;
-    height: ${PILL_H}px;
+    z-index: 3;
+    width: 40px;
+    height: 40px;
+    border-radius: 12px;
     display: flex;
     align-items: center;
     justify-content: center;
@@ -70,152 +61,177 @@ const CSS = `
     outline: none;
     cursor: pointer;
     background: transparent;
+    color: rgba(255,255,255,0.55);
+    transition: color 0.18s, background 0.18s, transform 0.15s;
     padding: 0;
-    z-index: 1;
-    color: rgba(255,255,255,0.55);
-    transition: color 0.2s;
-    font-family: ${FONT};
   }
 
-  /* Icon wrapper — the visible rounded square */
-  .ri-icon {
-    width: 38px;
-    height: 38px;
-    border-radius: 11px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    z-index: 3;
-    transition: background 0.2s, transform 0.15s;
-    color: rgba(255,255,255,0.55);
-  }
-
-  .ri-btn:hover:not(.ri-active) .ri-icon {
+  .rail-btn:hover {
     background: rgba(255,255,255,0.13);
     color: rgba(255,255,255,0.92);
     transform: scale(1.06);
   }
 
-  /* ── Active: white pill flush to right ───────────────────────── */
-  /* The pill is drawn with ::before on the button.
-     It fills from left:6px to right:0 (flush with rail edge).
-     Only left corners are rounded — right side is perfectly flat
-     so it butts against the white panel and they look continuous. */
-
-  .ri-btn.ri-active {
-    color: ${RAIL_BG};
-  }
-
-  .ri-btn.ri-active .ri-icon {
+  .rail-btn.is-active {
+    color: ${RAIL_COLOR};
     background: transparent !important;
     transform: none !important;
-    color: ${RAIL_BG} !important;
   }
 
-  .ri-btn.ri-active::before {
-    content: '';
+  /* The white pill + concave corners SVG sits absolutely in the slot */
+  .rail-cutout {
     position: absolute;
-    top: 0; bottom: 0;
-    left: 8px;
-    right: 0px;                    /* flush to right edge of rail */
-    background: ${WHITE};
-    border-radius: ${PILL_RADIUS}px 0 0 ${PILL_RADIUS}px;
-    z-index: 0;
-    /* NO box-shadow here — keep it clean */
-  }
-
-  /* Transition for the pill appearing */
-  .ri-btn::before {
-    transition: opacity 0.22s cubic-bezier(.4,0,.2,1),
-                transform 0.22s cubic-bezier(.4,0,.2,1);
-  }
-  .ri-btn:not(.ri-active)::before {
-    opacity: 0;
-    pointer-events: none;
-  }
-  .ri-btn.ri-active::before {
-    opacity: 1;
-  }
-
-  /* ── Concave corner elements ─────────────────────────────────── */
-  /* These live OUTSIDE the rail in the white area.
-     They're positioned absolutely relative to the rail+panel wrapper.
-     Each is a square with border-radius:50% and a box-shadow
-     in the RAIL color that "fills" the outside of the quarter circle,
-     creating the illusion of a concave bite. */
-
-  .ri-corner {
-    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
     right: 0;
-    width: ${CORNER_SIZE}px;
-    height: ${CORNER_SIZE}px;
-    background: transparent;
-    border-radius: 50%;
-    z-index: 10;
+    /* width = rail width so pill is flush to right edge */
+    width: ${RAIL_W}px;
+    height: ${PILL_H + CURVE * 2}px;
     pointer-events: none;
-    /* transitions match the pill */
+    z-index: 1;
+    opacity: 0;
     transition: opacity 0.22s cubic-bezier(.4,0,.2,1);
   }
 
-  .ri-corner.ri-hidden { opacity: 0; }
-  .ri-corner.ri-show   { opacity: 1; }
-
-  /* Top corner: positioned so its BOTTOM edge aligns with TOP of pill
-     Shadow goes DOWN-RIGHT → fills the top-right concave gap */
-  .ri-corner-top {
-    bottom: calc(50% + ${PILL_H / 2}px);
-    box-shadow: ${CORNER_SIZE / 2}px ${CORNER_SIZE / 2}px 0 ${CORNER_SIZE / 2}px ${RAIL_BG};
-  }
-
-  /* Bottom corner: positioned so its TOP edge aligns with BOTTOM of pill
-     Shadow goes UP-RIGHT → fills the bottom-right concave gap */
-  .ri-corner-bottom {
-    top: calc(50% + ${PILL_H / 2}px);
-    box-shadow: ${CORNER_SIZE / 2}px -${CORNER_SIZE / 2}px 0 ${CORNER_SIZE / 2}px ${RAIL_BG};
+  .rail-cutout.visible {
+    opacity: 1;
   }
 `
 
-// ─── RailBtn ──────────────────────────────────────────────────────
-// The slot div must be position:relative for the corner divs.
-// The corner divs sit at right:0 of the slot — which aligns with
-// the right edge of the rail div. Their box-shadows extend rightward
-// into the white panel area, completing the concave illusion.
+// ─── CutoutShape SVG ──────────────────────────────────────────────
+// This SVG draws the white pill with concave quarter-circle corners
+// The shape looks like this (viewed from the right side of the rail):
+//
+//    rail color fills here
+//    ╲
+//     ╲__   ← concave top curve
+//    |    |
+//    |    |  ← white pill (height = PILL_H)
+//    |____|
+//     ╱
+//    ╱      ← concave bottom curve
+//
+// SVG path breakdown:
+//   Start at top-left of the bounding box
+//   → Draw the top concave curve (quarter circle curving inward)
+//   → Straight line to top-right (flush right edge, no radius)
+//   → Straight line down the right side
+//   → Straight line to bottom-right
+//   → Draw the bottom concave curve
+//   → Close path
+
+function CutoutShape({ visible }) {
+  const W  = RAIL_W          // total width of SVG
+  const TH = PILL_H + CURVE * 2  // total height of SVG
+  const r  = CURVE           // concave corner radius
+  const ph = PILL_H          // pill height
+  const lr = RADIUS          // left border-radius
+
+  // Key Y coordinates
+  const pillTop    = r           // where the pill top starts (after top curve space)
+  const pillBottom = r + ph      // where the pill bottom ends
+
+  // The SVG path for the white shape:
+  // We want a white shape that:
+  // - Starts at top-left and goes right
+  // - Has a concave curve at top-right corner (curving LEFT into the rail)
+  // - Goes straight down the right edge
+  // - Has a concave curve at bottom-right corner
+  // - Returns to bottom-left with rounded corners on left side
+
+  // Actually the shape is: white pill flush right, with the RAIL color
+  // filling the concave "bites" above and below using the SVG background.
+
+  // Simpler and more reliable approach:
+  // Draw the white shape as a path with:
+  //   - left side: rounded rectangle (lr radius)
+  //   - right side: flat (flush with rail edge = SVG right edge)
+  //   - top-right concave corner: quarter circle biting into the shape
+  //   - bottom-right concave corner: quarter circle biting into the shape
+
+  const path = [
+    // Start at top-left, just below the top-left radius
+    `M ${lr} ${pillTop}`,
+    // Top-left corner (rounded)
+    `Q 0 ${pillTop} 0 ${pillTop + lr}`,
+    // Left edge — straight down
+    `L 0 ${pillBottom - lr}`,
+    // Bottom-left corner (rounded)
+    `Q 0 ${pillBottom} ${lr} ${pillBottom}`,
+    // Bottom edge — straight right to where concave corner starts
+    `L ${W - r} ${pillBottom}`,
+    // Bottom-right CONCAVE corner — quarter circle curving UP-LEFT
+    // Arc: rx=r ry=r, x-rotation=0, large-arc=0, sweep=0 (counter-clockwise)
+    `Q ${W} ${pillBottom} ${W} ${pillBottom - r}`,
+    // Right edge — straight up
+    `L ${W} ${pillTop + r}`,
+    // Top-right CONCAVE corner — quarter circle curving DOWN-LEFT
+    `Q ${W} ${pillTop} ${W - r} ${pillTop}`,
+    // Top edge — back to start
+    `L ${lr} ${pillTop}`,
+    'Z',
+  ].join(' ')
+
+  return (
+    <div className={`rail-cutout${visible ? ' visible' : ''}`}
+      style={{ top: '50%', transform: 'translateY(-50%)' }}>
+      <svg
+        width={W}
+        height={TH}
+        viewBox={`0 0 ${W} ${TH}`}
+        style={{ display: 'block', overflow: 'visible' }}
+      >
+        {/* The rail color fills the concave corner gaps */}
+        {/* Top concave "bite" — circle in rail color */}
+        <circle
+          cx={W}
+          cy={pillTop}
+          r={r}
+          fill={RAIL_COLOR}
+        />
+        {/* Bottom concave "bite" */}
+        <circle
+          cx={W}
+          cy={pillBottom}
+          r={r}
+          fill={RAIL_COLOR}
+        />
+        {/* White pill shape on top — covers the circles except the corners */}
+        <path d={path} fill={WHITE} />
+      </svg>
+    </div>
+  )
+}
+
+// ─── Rail slot ────────────────────────────────────────────────────
 function RailBtn({ icon: Icon, active, onClick, tooltip }) {
   const [hov, setHov] = useState(false)
   return (
-    <div className="ri-slot">
-      {/* ── Top concave corner ───────────────────────────────── */}
-      <div className={`ri-corner ri-corner-top ${active ? 'ri-show' : 'ri-hidden'}`} />
+    <div className="rail-slot">
+      {/* Cutout shape — white pill with concave corners */}
+      <CutoutShape visible={active} />
 
-      {/* ── The rail button ──────────────────────────────────── */}
+      {/* Button */}
       <button
         title={tooltip}
         onClick={onClick}
         onMouseEnter={() => setHov(true)}
         onMouseLeave={() => setHov(false)}
-        className={`ri-btn${active ? ' ri-active' : ''}`}
+        className={`rail-btn${active ? ' is-active' : ''}`}
+        style={{
+          color: active
+            ? RAIL_COLOR
+            : hov ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.55)',
+        }}
       >
-        <div
-          className="ri-icon"
-          style={{
-            color: active
-              ? RAIL_BG
-              : hov ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.55)',
-          }}
-        >
-          <Icon size={19} strokeWidth={active ? 2.2 : 1.8} />
-        </div>
+        <Icon size={20} strokeWidth={active ? 2.2 : 1.8} />
       </button>
-
-      {/* ── Bottom concave corner ────────────────────────────── */}
-      <div className={`ri-corner ri-corner-bottom ${active ? 'ri-show' : 'ri-hidden'}`} />
     </div>
   )
 }
 
 // ─── Panel row ────────────────────────────────────────────────────
-function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, indent }) {
+function PanelRow({ icon: Icon, label, active, onClick, depth = 0, dim, indent }) {
   const [hov, setHov] = useState(false)
   const pl = 12 + depth * 14 + (indent ? 10 : 0)
   const bg    = active ? P.active   : hov ? P.hov    : 'transparent'
@@ -233,7 +249,7 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, i
         background: bg, color,
         cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
         transition: 'background 0.15s, color 0.15s',
-        boxShadow: active ? '0 2px 8px rgba(99,102,241,0.22)' : 'none',
+        boxShadow: active ? '0 2px 8px rgba(99,102,241,0.20)' : 'none',
       }}
     >
       {Icon && (
@@ -246,15 +262,6 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, badge, dim, i
         overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
         letterSpacing: '-0.01em',
       }}>{label}</span>
-      {badge != null && (
-        <span style={{
-          fontSize: 10, fontWeight: 700,
-          color: active ? 'rgba(255,255,255,0.75)' : P.dim,
-          background: active ? 'rgba(255,255,255,0.18)' : '#f3f4f6',
-          borderRadius: 99, padding: '1px 7px',
-          border: active ? '1px solid rgba(255,255,255,0.2)' : `1px solid ${P.divider}`,
-        }}>{badge}</span>
-      )}
     </button>
   )
 }
@@ -284,8 +291,7 @@ function SectionHd({ icon: Icon, label, open, onToggle, onAdd }) {
       {Icon && <Icon size={11} strokeWidth={2} style={{ color: P.dim, flexShrink: 0 }} />}
       <span style={{
         fontSize: 10, fontWeight: 600, color: P.dim,
-        textTransform: 'uppercase', letterSpacing: '0.07em',
-        flex: 1, fontFamily: FONT,
+        textTransform: 'uppercase', letterSpacing: '0.07em', flex: 1, fontFamily: FONT,
       }}>{label}</span>
       {onAdd && (
         <button
@@ -439,16 +445,17 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
       <style>{CSS}</style>
 
       {/* ══ RAIL ════════════════════════════════════════════════════ */}
-      {/* CRITICAL: overflow must be 'visible' so the corner box-shadows
-          bleed rightward into the white panel area */}
+      {/* overflow:hidden — the SVG cutout is sized to fit exactly within
+          the rail width. No bleed needed. The concave corners are drawn
+          INSIDE the SVG using circles in the rail color. */}
       <div style={{
         width: RAIL_W, minWidth: RAIL_W,
-        background: RAIL_BG,
+        background: RAIL_COLOR,
         display: 'flex', flexDirection: 'column',
         alignItems: 'center',
         paddingTop: 14, paddingBottom: 12,
         position: 'relative',
-        overflow: 'visible',
+        overflow: 'hidden',       // ← HIDDEN — no overflow bleed
         zIndex: 2, flexShrink: 0,
       }}>
         {/* Logo */}
@@ -459,7 +466,7 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
             background: 'rgba(255,255,255,0.20)',
             border: '1.5px solid rgba(255,255,255,0.30)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'pointer', flexShrink: 0,
+            cursor: 'pointer', flexShrink: 0, position: 'relative', zIndex: 3,
           }}
         >
           <BarChart3 size={18} strokeWidth={2.2} style={{ color: '#fff' }} />
@@ -483,16 +490,10 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
             background: 'rgba(255,255,255,0.12)',
             border: '1px solid rgba(255,255,255,0.20)',
             color: 'rgba(255,255,255,0.65)', cursor: 'pointer', outline: 'none',
-            transition: 'all 0.15s',
+            transition: 'all 0.15s', position: 'relative', zIndex: 3,
           }}
-          onMouseEnter={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.22)'
-            e.currentTarget.style.color = '#fff'
-          }}
-          onMouseLeave={e => {
-            e.currentTarget.style.background = 'rgba(255,255,255,0.12)'
-            e.currentTarget.style.color = 'rgba(255,255,255,0.65)'
-          }}
+          onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.22)'; e.currentTarget.style.color = '#fff' }}
+          onMouseLeave={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.12)'; e.currentTarget.style.color = 'rgba(255,255,255,0.65)' }}
         >
           {collapsed ? <ChevronsRight size={14} strokeWidth={2} /> : <ChevronsLeft size={14} strokeWidth={2} />}
         </button>
@@ -534,7 +535,6 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
                   ? <p style={{ fontSize: 12, color: P.dim, padding: '8px 12px', lineHeight: 1.7, margin: 0, fontFamily: FONT }}>No projects yet.<br />Create your first one.</p>
                   : projects.map(p => <ProjectNode key={p.id} project={p} activePage={activePage} />)
               }
-
               <button
                 onClick={() => navigate('/projects')}
                 style={{
