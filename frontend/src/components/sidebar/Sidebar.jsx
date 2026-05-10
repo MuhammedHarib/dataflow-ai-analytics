@@ -13,16 +13,18 @@ import {
 import { projectsApi } from '../../api/client'
 
 // ─── Tune these values to match reference ────────────────────────
-const RAIL_W   = 64    // rail width px
-const PANEL_W  = 228   // white panel width px
-const SLOT_H   = 56    // each nav slot height px
-const PILL_H   = 46    // white pill height px
-const LR       = 14    // pill left border-radius px
-const CR       = 18    // concave corner radius px — bigger = smoother curve
+const RAIL_W = 64    // rail width px
+const PANEL_W = 228   // white panel width px
+const SLOT_H = 56    // each nav slot height px
+const PILL_H = 44   // white pill height px
+const LR = 18    // pill left border-radius px
+const CR = 24  // concave corner radius px — bigger = smoother curve
 
-const RAIL_BG  = '#6366f1'
-const WHITE    = '#ffffff'
-const FONT     = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
+const INSET = 10
+
+const RAIL_BG = '#6366f1'
+const WHITE = '#ffffff'
+const FONT = "-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif"
 
 const P = {
   bg: WHITE, border: '#ebebed', text: '#111827', dim: '#a1a1aa',
@@ -66,42 +68,46 @@ const CSS = `
 //   sweep=1 = clockwise (convex)
 
 function CutoutSVG({ active }) {
-  const W   = RAIL_W
-  const H   = SLOT_H
-  const pt  = (H - PILL_H) / 2   // pill top Y
-  const pb  = (H + PILL_H) / 2   // pill bottom Y
-  const r   = CR                  // concave corner radius
+  const W = RAIL_W
+  const H = SLOT_H
 
-  // The white shape path:
-  // Start: top-left of pill (with left radius)
-  // → arc top-left corner (convex, rounding the left-top)
-  // → straight across top to right side, stopping CR before right edge
-  // → arc top-right CONCAVE corner (bites in from right)
-  // → straight down right edge
-  // → arc bottom-right CONCAVE corner
-  // → straight across bottom back to left, stopping at left radius
-  // → arc bottom-left corner (convex)
-  // → up left edge back to start
+  const pt = (H - PILL_H) / 2
+  const pb = (H + PILL_H) / 2
 
+  const r = CR
+
+  // OUTWARD liquid notch
   const path = `
-    M ${LR} ${pt}
-    L ${W - r} ${pt}
-    A ${r} ${r} 0 0 0 ${W} ${pt + r}
-    L ${W} ${pb - r}
-    A ${r} ${r} 0 0 0 ${W - r} ${pb}
-    L ${LR} ${pb}
-    A ${LR} ${LR} 0 0 1 0 ${pb - LR}
-    L 0 ${pt + LR}
-    A ${LR} ${LR} 0 0 1 ${LR} ${pt}
-    Z
-  `
+  M ${INSET + LR} ${pt}
+
+  L ${W - r} ${pt}
+
+  Q ${W} ${pt} ${W} ${pt - r}
+
+  L ${W} ${pb + r}
+
+  Q ${W} ${pb} ${W - r} ${pb}
+
+  L ${INSET + LR} ${pb}
+
+  A ${LR} ${LR} 0 0 1 ${INSET} ${pb - LR}
+
+  L ${INSET} ${pt + LR}
+
+  A ${LR} ${LR} 0 0 1 ${INSET + LR} ${pt}
+
+  Z
+`
 
   return (
     <svg
       className="rs-svg rs-cutout"
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="none"
-      style={{ opacity: active ? 1 : 0 }}
+      style={{
+        opacity: active ? 1 : 0,
+        overflow: 'visible',
+      }}
     >
       <path d={path} fill={WHITE} />
     </svg>
@@ -136,7 +142,7 @@ function RailBtn({ icon: Icon, active, onClick, tooltip }) {
 function PanelRow({ icon: Icon, label, active, onClick, depth = 0, dim, indent }) {
   const [hov, setHov] = useState(false)
   const pl = 12 + depth * 14 + (indent ? 10 : 0)
-  const bg    = active ? P.active : hov ? P.hov : 'transparent'
+  const bg = active ? P.active : hov ? P.hov : 'transparent'
   const color = active ? P.activeTx : hov ? P.hovTx : dim ? P.dim : P.text
   return (
     <button
@@ -165,7 +171,7 @@ function PanelRow({ icon: Icon, label, active, onClick, depth = 0, dim, indent }
 
 // ─── Section header ───────────────────────────────────────────────
 function SectionHd({ icon: Icon, label, open, onToggle, onAdd }) {
-  const [hov, setHov]       = useState(false)
+  const [hov, setHov] = useState(false)
   const [addHov, setAddHov] = useState(false)
   return (
     <div onClick={onToggle}
@@ -202,17 +208,17 @@ function SectionHd({ icon: Icon, label, open, onToggle, onAdd }) {
 // ─── Project node ─────────────────────────────────────────────────
 function ProjectNode({ project, activePage }) {
   const navigate = useNavigate()
-  const [open, setOpen]           = useState(false)
-  const [openDash, setOpenDash]   = useState(false)
+  const [open, setOpen] = useState(false)
+  const [openDash, setOpenDash] = useState(false)
   const [openChats, setOpenChats] = useState(false)
-  const [summary, setSummary]     = useState(null)
-  const [hov, setHov]             = useState(false)
+  const [summary, setSummary] = useState(null)
+  const [hov, setHov] = useState(false)
   const isActive = activePage?.projectId === project.id
 
   useEffect(() => {
     if (!open || summary) return
     let cancelled = false
-    projectsApi.summary(project.id).then(r => { if (!cancelled) setSummary(r.data) }).catch(() => {})
+    projectsApi.summary(project.id).then(r => { if (!cancelled) setSummary(r.data) }).catch(() => { })
     return () => { cancelled = true }
   }, [open, project.id, summary])
 
@@ -258,10 +264,10 @@ function ProjectNode({ project, activePage }) {
           {openDash && (<>
             {summary?.dashboards?.length
               ? summary.dashboards.map(d => (
-                  <PanelRow key={d.id} icon={d.is_pinned ? Pin : Hash} label={d.name} depth={0} indent
-                    active={activePage?.view === 'dashboard' && Number(activePage?.dashboardId) === d.id}
-                    onClick={() => navigate(`/projects/${project.id}/dashboards/${d.id}`)} />
-                ))
+                <PanelRow key={d.id} icon={d.is_pinned ? Pin : Hash} label={d.name} depth={0} indent
+                  active={activePage?.view === 'dashboard' && Number(activePage?.dashboardId) === d.id}
+                  onClick={() => navigate(`/projects/${project.id}/dashboards/${d.id}`)} />
+              ))
               : <p style={{ fontSize: 11, color: P.dim, margin: '2px 0 4px 28px', fontFamily: FONT }}>No dashboards</p>
             }
             <PanelRow icon={Plus} label="New dashboard" depth={0} indent dim
@@ -274,10 +280,10 @@ function ProjectNode({ project, activePage }) {
           {openChats && (<>
             {summary?.chats?.length
               ? summary.chats.slice(0, 5).map(c => (
-                  <PanelRow key={c.id} icon={Hash} label={c.title || 'Untitled'} depth={0} indent
-                    active={activePage?.view === 'project-chat' && Number(activePage?.chatId) === c.id}
-                    onClick={() => navigate(`/projects/${project.id}/chat/${c.id}`)} />
-                ))
+                <PanelRow key={c.id} icon={Hash} label={c.title || 'Untitled'} depth={0} indent
+                  active={activePage?.view === 'project-chat' && Number(activePage?.chatId) === c.id}
+                  onClick={() => navigate(`/projects/${project.id}/chat/${c.id}`)} />
+              ))
               : <p style={{ fontSize: 11, color: P.dim, margin: '2px 0 4px 28px', fontFamily: FONT }}>No chats</p>
             }
             <PanelRow icon={Plus} label="New chat" depth={0} indent dim
@@ -296,17 +302,17 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
   const navigate = useNavigate()
   const location = useLocation()
   const [projects, setProjects] = useState([])
-  const [loading,  setLoading]  = useState(true)
+  const [loading, setLoading] = useState(true)
 
   const load = () => {
     setLoading(true)
-    projectsApi.list().then(r => setProjects(r.data)).catch(() => {}).finally(() => setLoading(false))
+    projectsApi.list().then(r => setProjects(r.data)).catch(() => { }).finally(() => setLoading(false))
   }
 
   useEffect(() => { load() }, [])
   useEffect(() => { if (location.pathname === '/projects') load() }, [location.pathname])
 
-  const isChat     = location.pathname === '/'
+  const isChat = location.pathname === '/'
   const isProjects = location.pathname === '/projects'
 
   return (
@@ -334,11 +340,11 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
           <BarChart3 size={18} strokeWidth={2.2} style={{ color: '#fff' }} />
         </div>
 
-        <RailBtn icon={MessageSquare} active={isChat}     onClick={() => navigate('/')}         tooltip="AI Workspace" />
-        <RailBtn icon={LayoutGrid}    active={isProjects} onClick={() => navigate('/projects')} tooltip="Projects" />
+        <RailBtn icon={MessageSquare} active={isChat} onClick={() => navigate('/')} tooltip="AI Workspace" />
+        <RailBtn icon={LayoutGrid} active={isProjects} onClick={() => navigate('/projects')} tooltip="Projects" />
         <div style={{ flex: 1 }} />
-        <RailBtn icon={HelpCircle} active={false} onClick={() => {}} tooltip="Help" />
-        <RailBtn icon={Settings}   active={false} onClick={() => {}} tooltip="Settings" />
+        <RailBtn icon={HelpCircle} active={false} onClick={() => { }} tooltip="Help" />
+        <RailBtn icon={Settings} active={false} onClick={() => { }} tooltip="Settings" />
 
         {/* Collapse */}
         <button onClick={onCollapse} title={collapsed ? 'Expand' : 'Collapse'}
@@ -371,8 +377,8 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
           </div>
 
           <div style={{ padding: '10px 8px 6px', flexShrink: 0 }}>
-            <PanelRow icon={MessageSquare} label="AI Workspace" active={isChat}     onClick={() => navigate('/')} />
-            <PanelRow icon={LayoutGrid}    label="Projects"     active={isProjects} onClick={() => navigate('/projects')} />
+            <PanelRow icon={MessageSquare} label="AI Workspace" active={isChat} onClick={() => navigate('/')} />
+            <PanelRow icon={LayoutGrid} label="Projects" active={isProjects} onClick={() => navigate('/projects')} />
           </div>
 
           <Divider />
@@ -406,7 +412,7 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
           <Divider />
 
           <div style={{ padding: '4px 8px 10px', flexShrink: 0 }}>
-            <PanelRow icon={Settings} label="Settings" active={false} onClick={() => {}} />
+            <PanelRow icon={Settings} label="Settings" active={false} onClick={() => { }} />
           </div>
         </>)}
       </div>
