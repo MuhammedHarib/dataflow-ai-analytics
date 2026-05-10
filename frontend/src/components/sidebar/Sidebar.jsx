@@ -18,7 +18,7 @@ const PANEL_W = 228   // white panel width px
 const SLOT_H = 56    // each nav slot height px
 const PILL_H = 44   // white pill height px
 const LR = 18    // pill left border-radius px
-const CR = 24  // concave corner radius px — bigger = smoother curve
+const CR = 18  // concave corner radius px — bigger = smoother curve
 
 const INSET = 10
 
@@ -36,12 +36,11 @@ const P = {
 
 // ─── CSS ──────────────────────────────────────────────────────────
 const CSS = `
-  .rs { position:relative; width:100%; height:${SLOT_H}px; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .rs { position:relative; width:100%; height:${SLOT_H}px; display:flex; align-items:center; justify-content:center; flex-shrink:0; z-index: 2; }
   .rs-svg { position:absolute; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:1; }
   .rs-icon { position:relative; z-index:2; width:40px; height:40px; border-radius:12px; display:flex; align-items:center; justify-content:center; border:none; outline:none; cursor:pointer; background:transparent; padding:0; transition:background 0.18s, transform 0.15s; }
   .rs-icon:hover { background:rgba(255,255,255,0.13); transform:scale(1.06); }
   .rs-icon.active { background:transparent !important; transform:none !important; }
-  .rs-cutout { transition: opacity 0.22s cubic-bezier(.4,0,.2,1); }
 `
 
 // ─── CutoutSVG ───────────────────────────────────────────────────
@@ -119,7 +118,6 @@ function RailBtn({ icon: Icon, active, onClick, tooltip }) {
   const [hov, setHov] = useState(false)
   return (
     <div className="rs">
-      <CutoutSVG active={active} />
       <button
         title={tooltip}
         onClick={onClick}
@@ -313,7 +311,8 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
   useEffect(() => { if (location.pathname === '/projects') load() }, [location.pathname])
 
   const isChat = location.pathname === '/'
-  const isProjects = location.pathname === '/projects'
+  const isProjects = location.pathname.startsWith('/projects')
+  const activeIndex = isChat ? 0 : isProjects ? 1 : 0
 
   return (
     <div style={{ display: 'flex', height: '100vh', flexShrink: 0, fontFamily: FONT }}>
@@ -338,6 +337,20 @@ export default function Sidebar({ collapsed, onCollapse, activePage }) {
           cursor: 'pointer', flexShrink: 0, position: 'relative', zIndex: 3,
         }}>
           <BarChart3 size={18} strokeWidth={2.2} style={{ color: '#fff' }} />
+        </div>
+
+        {/* Floating Animated Cutout */}
+        <div style={{
+          position: 'absolute',
+          left: 0,
+          top: 66 + activeIndex * SLOT_H,
+          width: RAIL_W,
+          height: SLOT_H,
+          transition: 'top 420ms cubic-bezier(.22,1,.36,1)',
+          zIndex: 1,
+          pointerEvents: 'none',
+        }}>
+          <CutoutSVG active />
         </div>
 
         <RailBtn icon={MessageSquare} active={isChat} onClick={() => navigate('/')} tooltip="AI Workspace" />
