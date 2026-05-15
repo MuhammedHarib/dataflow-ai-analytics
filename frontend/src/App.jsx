@@ -13,7 +13,6 @@ import ProjectsHome from './components/workspace/ProjectsHome'
 import ProjectDetail from './components/workspace/ProjectDetail'
 import DashboardBuilder from './components/dashboards/DashboardBuilder'
 const ProjectChatView = lazy(() => import('./views/ProjectChatView'))
-
 const ChatPage = lazy(() => import('./views/ChatView'))
 
 const Spin = () => (
@@ -43,31 +42,27 @@ function DashboardBuilderKeyed(props) {
 }
 
 function AppInner() {
-  const navigate = useNavigate()
-  const location = useLocation()
+  const navigate   = useNavigate()
+  const location   = useLocation()
   const activePage = pageFromLocation(location)
 
-  // onNavigate: called by Sidebar and page components
-  const onNavigate = ({ view, projectId, dashboardId, newChat, chatId } = {}) => {
-    if (view === 'home')       navigate('/projects')
-    else if (view === 'project') navigate(`/projects/${projectId}`)
-    else if (view === 'new-project') navigate('/projects')   // ProjectsHome handles the modal
+  const onNavigate = ({ view, projectId, dashboardId } = {}) => {
+    if      (view === 'home')        navigate('/projects')
+    else if (view === 'project')     navigate(`/projects/${projectId}`)
+    else if (view === 'new-project') navigate('/projects')
     else if (view === 'dashboards')  navigate(`/projects/${projectId}`)
-    else if (view === 'new-dashboard') navigate(`/projects/${projectId}/dashboards/new`)
+    // 'new-dashboard' is now handled by the modal inside ProjectDetail — no route needed
     else if (view === 'dashboard')   navigate(`/projects/${projectId}/dashboards/${dashboardId}`)
-    else if (view === 'chat')  navigate('/')
-    else if (view === 'realtime') navigate('/realtime')
+    else if (view === 'chat')        navigate('/')
     else navigate('/')
   }
 
   return (
     <AppShell activePage={activePage}>
       <Routes>
-        {/* Original AI workspace — completely untouched */}
+        {/* AI workspace */}
         <Route path="/" element={
-          <Suspense fallback={<Spin />}>
-            <ChatPage />
-          </Suspense>
+          <Suspense fallback={<Spin />}><ChatPage /></Suspense>
         } />
 
         {/* Projects */}
@@ -82,9 +77,11 @@ function AppInner() {
           <Suspense fallback={<Spin />}><ProjectChatView /></Suspense>
         } />
 
-        {/* Dashboard builder */}
-        <Route path="/projects/:projectId/dashboards/:dashboardId"
-          element={<DashboardBuilderKeyed onNavigate={onNavigate} />} />
+        {/* Dashboard builder — only real dashboardId, never "new" */}
+        <Route
+          path="/projects/:projectId/dashboards/:dashboardId"
+          element={<DashboardBuilderKeyed onNavigate={onNavigate} />}
+        />
 
         {/* Catch-all */}
         <Route path="*" element={<ProjectsHome onNavigate={onNavigate} />} />

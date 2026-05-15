@@ -1,11 +1,4 @@
 // src/components/workspace/ProjectDetail.jsx
-// Light theme redesign
-// • Glassmorphic sticky header with project title + controls
-// • Compact dataset preview card
-// • Ultra-minimalist dashboard row list
-// • Offset icon collage empty state
-// All original logic preserved exactly
-
 import React, { useState, useEffect, useRef, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import {
@@ -13,8 +6,37 @@ import {
   LayoutDashboard, Database, FileSpreadsheet,
   ChevronRight, X, Upload, AlertTriangle,
   CheckCircle, MessageSquare, Calendar,
+  // Icon registry — must match NewProjectModal ICONS list
+  TrendingUp, BarChart2, DollarSign, Globe,
+  Cpu, Target, FlaskConical, Users, Zap,
 } from 'lucide-react'
 import { projectsApi, datasetsApi, dashboardsApi } from '../../api/client'
+import NewDashboardModal from '../dashboards/NewDashboardModal'
+
+// ── Icon registry (mirrors NewProjectModal) ───────────────────────
+const ICON_MAP = {
+  dashboard: LayoutDashboard,
+  trending:  TrendingUp,
+  bar:       BarChart2,
+  dollar:    DollarSign,
+  globe:     Globe,
+  cpu:       Cpu,
+  target:    Target,
+  flask:     FlaskConical,
+  users:     Users,
+  zap:       Zap,
+}
+
+/** Resolves project.icon to a Lucide component.
+ *  Handles legacy emoji strings gracefully (renders as text). */
+function ProjectIcon({ icon, color, size = 18 }) {
+  const Icon = ICON_MAP[icon]
+  if (Icon) {
+    return <Icon size={size} strokeWidth={1.8} color={color} />
+  }
+  // Legacy emoji fallback
+  return <span style={{ fontSize: size - 2, lineHeight: 1 }}>{icon || '📊'}</span>
+}
 
 // ── Design tokens ─────────────────────────────────────────────────
 const C = {
@@ -86,19 +108,14 @@ function SchemaModal({ dataset, onClose }) {
         }}
         onClick={e => e.stopPropagation()}
       >
-        {/* Header */}
         <div style={{
           display: 'flex', justifyContent: 'space-between',
           alignItems: 'flex-start', marginBottom: 20,
         }}>
           <div>
             <h3 style={{ fontSize: 16, fontWeight: 700, color: C.text,
-              margin: '0 0 4px', letterSpacing: '-0.02em' }}>
-              Schema
-            </h3>
-            <p style={{ fontSize: 12, color: C.textSub, margin: 0 }}>
-              {dataset.file_name}
-            </p>
+              margin: '0 0 4px', letterSpacing: '-0.02em' }}>Schema</h3>
+            <p style={{ fontSize: 12, color: C.textSub, margin: 0 }}>{dataset.file_name}</p>
           </div>
           <button onClick={onClose} style={{
             width: 30, height: 30, borderRadius: 8,
@@ -114,9 +131,7 @@ function SchemaModal({ dataset, onClose }) {
           </button>
         </div>
 
-        {/* Table */}
-        <div style={{ overflowY: 'auto', flex: 1, borderRadius: 10,
-          border: `1px solid ${C.border}` }}>
+        <div style={{ overflowY: 'auto', flex: 1, borderRadius: 10, border: `1px solid ${C.border}` }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
             <thead style={{ position: 'sticky', top: 0, background: '#f9fafb', zIndex: 1 }}>
               <tr style={{ borderBottom: `1px solid ${C.border}` }}>
@@ -124,17 +139,14 @@ function SchemaModal({ dataset, onClose }) {
                   <th key={h} style={{
                     textAlign: 'left', padding: '9px 14px',
                     color: C.textDim, fontWeight: 600,
-                    textTransform: 'uppercase', letterSpacing: '0.06em',
-                    fontSize: 10,
+                    textTransform: 'uppercase', letterSpacing: '0.06em', fontSize: 10,
                   }}>{h}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
               {cols.map(([col, dtype], i) => (
-                <tr key={col} style={{
-                  borderBottom: i < cols.length - 1 ? `1px solid #f9fafb` : 'none',
-                }}>
+                <tr key={col} style={{ borderBottom: i < cols.length - 1 ? `1px solid #f9fafb` : 'none' }}>
                   <td style={{ padding: '8px 14px', color: C.text,
                     fontFamily: 'ui-monospace, monospace', fontSize: 12 }}>{col}</td>
                   <td style={{ padding: '8px 14px' }}>
@@ -152,11 +164,7 @@ function SchemaModal({ dataset, onClose }) {
           </table>
         </div>
 
-        {/* Footer */}
-        <div style={{
-          marginTop: 16, fontSize: 11, color: C.textDim,
-          display: 'flex', gap: 12,
-        }}>
+        <div style={{ marginTop: 16, fontSize: 11, color: C.textDim, display: 'flex', gap: 12 }}>
           <span>{dataset.row_count?.toLocaleString()} rows</span>
           <span>·</span>
           <span>{dataset.col_count} columns</span>
@@ -179,9 +187,7 @@ function GhostBtn({ children, onClick, danger, small }) {
       style={{
         display: 'flex', alignItems: 'center', gap: 5,
         padding: small ? '5px 10px' : '7px 13px',
-        borderRadius: 8, border: `1px solid ${hov
-          ? (danger ? C.redBd : C.borderHov)
-          : C.border}`,
+        borderRadius: 8, border: `1px solid ${hov ? (danger ? C.redBd : C.borderHov) : C.border}`,
         background: hov ? (danger ? C.redBg : '#f9fafb') : C.card,
         color: hov ? (danger ? C.red : C.text) : C.textSub,
         cursor: 'pointer', fontSize: 12, fontWeight: 500,
@@ -222,16 +228,13 @@ function PrimaryBtn({ children, onClick, disabled }) {
 
 // ── Dashboard row ─────────────────────────────────────────────────
 function DashboardRow({ dashboard, onOpen, onDelete }) {
-  const [hov,    setHov]    = useState(false)
+  const [hov, setHov]       = useState(false)
   const [delHov, setDelHov] = useState(false)
 
   const SCHEME_COLORS = {
-    'Metric Flow':  '#6366f1',
-    'Neon Dark':    '#10b981',
-    'Ocean Blue':   '#3b82f6',
-    'Solar Gold':   '#f59e0b',
-    'Rose Quartz':  '#ec4899',
-    'Cyberpunk':    '#8b5cf6',
+    'Metric Flow': '#6366f1', 'Neon Dark': '#10b981',
+    'Ocean Blue': '#3b82f6',  'Solar Gold': '#f59e0b',
+    'Rose Quartz': '#ec4899', 'Cyberpunk': '#8b5cf6',
   }
   const accent = SCHEME_COLORS[dashboard.scheme] || C.accent
   const widgetCount = dashboard.layout?.widgets?.length || 0
@@ -247,10 +250,8 @@ function DashboardRow({ dashboard, onOpen, onDelete }) {
         background: hov ? '#fafafa' : C.card,
         borderBottom: `1px solid ${C.border}`,
         cursor: 'pointer', transition: 'background 0.12s',
-        position: 'relative',
       }}
     >
-      {/* Color dot */}
       <div style={{
         width: 8, height: 8, borderRadius: '50%',
         background: accent, flexShrink: 0,
@@ -258,7 +259,6 @@ function DashboardRow({ dashboard, onOpen, onDelete }) {
         transition: 'box-shadow 0.15s',
       }} />
 
-      {/* Name */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{
           fontSize: 13, fontWeight: 600, color: C.text,
@@ -273,25 +273,18 @@ function DashboardRow({ dashboard, onOpen, onDelete }) {
         )}
       </div>
 
-      {/* Widget count */}
-      <div style={{
-        fontSize: 11, color: C.textDim, whiteSpace: 'nowrap',
-        display: 'flex', alignItems: 'center', gap: 4,
-      }}>
+      <div style={{ fontSize: 11, color: C.textDim, whiteSpace: 'nowrap',
+        display: 'flex', alignItems: 'center', gap: 4 }}>
         <LayoutDashboard size={11} strokeWidth={1.6} />
         {widgetCount} widget{widgetCount !== 1 ? 's' : ''}
       </div>
 
-      {/* Updated */}
-      <div style={{
-        fontSize: 11, color: C.textDim, whiteSpace: 'nowrap',
-        display: 'flex', alignItems: 'center', gap: 4, minWidth: 70,
-      }}>
+      <div style={{ fontSize: 11, color: C.textDim, whiteSpace: 'nowrap',
+        display: 'flex', alignItems: 'center', gap: 4, minWidth: 70 }}>
         <Calendar size={11} strokeWidth={1.6} />
         {fmtAge(dashboard.updated_at)}
       </div>
 
-      {/* Delete */}
       <button
         onClick={e => { e.stopPropagation(); onDelete(dashboard.id) }}
         onMouseEnter={() => setDelHov(true)}
@@ -309,7 +302,6 @@ function DashboardRow({ dashboard, onOpen, onDelete }) {
         <Trash2 size={11} strokeWidth={1.8} />
       </button>
 
-      {/* Arrow */}
       <ChevronRight size={14} strokeWidth={1.8}
         style={{ color: hov ? C.accent : C.textDim, transition: 'color 0.15s', flexShrink: 0 }} />
     </div>
@@ -324,7 +316,6 @@ function DashboardsEmptyState({ hasDataset, onCreate }) {
       alignItems: 'center', justifyContent: 'center',
       padding: '60px 24px', textAlign: 'center', fontFamily: FONT,
     }}>
-      {/* Offset collage */}
       <div style={{ position: 'relative', width: 100, height: 80, marginBottom: 28 }}>
         {[
           { icon: LayoutDashboard, top: 0,  left: 0,  size: 44, color: C.accentBg, bd: C.accentBd, ic: C.accent },
@@ -342,20 +333,19 @@ function DashboardsEmptyState({ hasDataset, onCreate }) {
           </div>
         ))}
       </div>
-
-      <h3 style={{
-        fontSize: 17, fontWeight: 700, color: C.text,
-        letterSpacing: '-0.02em', margin: '0 0 8px',
-      }}>No dashboards yet</h3>
-      <p style={{
-        fontSize: 12, color: C.textSub, maxWidth: 280,
-        lineHeight: 1.6, margin: '0 0 24px',
-      }}>
+      <h3 style={{ fontSize: 17, fontWeight: 700, color: C.text,
+        letterSpacing: '-0.02em', margin: '0 0 8px' }}>No dashboards yet</h3>
+      <p style={{ fontSize: 12, color: C.textSub, maxWidth: 280,
+        lineHeight: 1.6, margin: '0 0 24px' }}>
         {hasDataset
           ? 'Create your first dashboard to start visualizing your data.'
           : 'Upload a dataset first, then create dashboards to visualize it.'}
       </p>
-      {hasDataset && <PrimaryBtn onClick={onCreate}><Plus size={14} strokeWidth={2.5} /> Create Dashboard</PrimaryBtn>}
+      {hasDataset && (
+        <PrimaryBtn onClick={onCreate}>
+          <Plus size={14} strokeWidth={2.5} /> Create Dashboard
+        </PrimaryBtn>
+      )}
     </div>
   )
 }
@@ -426,20 +416,57 @@ function UploadZone({ onFile, uploading, uploadPct, uploadErr, dragOver, setDrag
   )
 }
 
+// ── Add dashboard row ─────────────────────────────────────────────
+function AddDashboardRow({ onClick }) {
+  const [hov, setHov] = useState(false)
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={() => setHov(true)}
+      onMouseLeave={() => setHov(false)}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 10,
+        padding: '12px 18px',
+        background: hov ? C.accentBg : 'transparent',
+        cursor: 'pointer', transition: 'background 0.12s',
+        borderTop: `1px solid ${C.border}`,
+      }}
+    >
+      <div style={{
+        width: 22, height: 22, borderRadius: 6,
+        background: hov ? C.accent : C.accentBg,
+        border: `1px solid ${hov ? C.accent : C.accentBd}`,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        transition: 'all 0.15s',
+      }}>
+        <Plus size={12} strokeWidth={2.5} style={{ color: hov ? '#fff' : C.accent }} />
+      </div>
+      <span style={{
+        fontSize: 12, fontWeight: 600,
+        color: hov ? C.accent : C.textDim,
+        transition: 'color 0.15s',
+      }}>New Dashboard</span>
+    </div>
+  )
+}
+
 // ── Main ──────────────────────────────────────────────────────────
 export default function ProjectDetail({ onNavigate }) {
   const { projectId } = useParams()
   const navigate      = useNavigate()
 
-  const [project,    setProject]    = useState(null)
-  const [dataset,    setDataset]    = useState(null)
-  const [dashboards, setDashboards] = useState([])
-  const [loading,    setLoading]    = useState(true)
-  const [uploading,  setUploading]  = useState(false)
-  const [uploadPct,  setUploadPct]  = useState(0)
-  const [uploadErr,  setUploadErr]  = useState('')
-  const [dragOver,   setDragOver]   = useState(false)
-  const [showSchema, setShowSchema] = useState(false)
+  const [project,        setProject]        = useState(null)
+  const [dataset,        setDataset]        = useState(null)
+  const [dashboards,     setDashboards]     = useState([])
+  const [loading,        setLoading]        = useState(true)
+  const [uploading,      setUploading]      = useState(false)
+  const [uploadPct,      setUploadPct]      = useState(0)
+  const [uploadErr,      setUploadErr]      = useState('')
+  const [dragOver,       setDragOver]       = useState(false)
+  const [showSchema,     setShowSchema]     = useState(false)
+  // ── New dashboard modal state ──────────────────────────────────
+  const [showNewDash,    setShowNewDash]    = useState(false)
+  const [creatingDash,   setCreatingDash]   = useState(false)
 
   const fileRef = useRef(null)
 
@@ -491,6 +518,30 @@ export default function ProjectDetail({ onNavigate }) {
     setDashboards(prev => prev.filter(d => d.id !== id))
   }
 
+  // ── Create dashboard from modal ───────────────────────────────
+  const handleCreateDashboard = async ({ name, description, scheme, layout }) => {
+    if (creatingDash) return
+    setCreatingDash(true)
+    try {
+      const payload = {
+        project_id:  Number(projectId),
+        dataset_id:  dataset?.id || null,
+        name,
+        description: description || null,
+        scheme:      scheme || 'Metric Flow',
+        layout_json: layout ? JSON.stringify(layout) : null,
+      }
+      const res = await dashboardsApi.create(payload)
+      const newDash = res.data
+      setShowNewDash(false)
+      navigate(`/projects/${projectId}/dashboards/${newDash.id}`)
+    } catch (e) {
+      console.error('Failed to create dashboard', e)
+    } finally {
+      setCreatingDash(false)
+    }
+  }
+
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center',
       height: '100%', color: C.textSub, fontSize: 13, fontFamily: FONT }}>
@@ -505,13 +556,13 @@ export default function ProjectDetail({ onNavigate }) {
     </div>
   )
 
-  return (
-    <div style={{
-      minHeight: '100%', background: C.pageBg,
-      overflowY: 'auto', fontFamily: FONT,
-    }}>
+  // Resolve the project accent color (fallback to indigo)
+  const projectColor = project.color || C.accent
 
-      {/* ── Glassmorphic sticky header ──────────────────── */}
+  return (
+    <div style={{ minHeight: '100%', background: C.pageBg, overflowY: 'auto', fontFamily: FONT }}>
+
+      {/* ── Sticky header ──────────────────────────────── */}
       <div style={{
         position: 'sticky', top: 0, zIndex: 20,
         background: 'rgba(255,255,255,0.80)',
@@ -539,14 +590,15 @@ export default function ProjectDetail({ onNavigate }) {
 
         <span style={{ color: C.border, fontSize: 16 }}>/</span>
 
-        {/* Project icon + name */}
+        {/* ── Project icon — now renders the Lucide icon, not raw string ── */}
         <div style={{
           width: 34, height: 34, borderRadius: 9,
-          background: `${project.color || C.accent}14`,
-          border: `1px solid ${project.color || C.accent}28`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 17,
+          background: `${projectColor}14`,
+          border: `1px solid ${projectColor}28`,
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          flexShrink: 0,
         }}>
-          {project.icon || '📊'}
+          <ProjectIcon icon={project.icon} color={projectColor} size={17} />
         </div>
 
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -563,7 +615,7 @@ export default function ProjectDetail({ onNavigate }) {
           )}
         </div>
 
-        {/* Header controls — dataset + new dashboard */}
+        {/* Header controls */}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0 }}>
           {dataset && (
             <>
@@ -579,8 +631,9 @@ export default function ProjectDetail({ onNavigate }) {
               <div style={{ width: 1, height: 20, background: C.border }} />
             </>
           )}
+          {/* ── Opens modal, not a route ── */}
           <PrimaryBtn
-            onClick={() => navigate(`/projects/${projectId}/dashboards/new`)}
+            onClick={() => setShowNewDash(true)}
             disabled={!dataset}
           >
             <Plus size={14} strokeWidth={2.5} /> New Dashboard
@@ -588,10 +641,10 @@ export default function ProjectDetail({ onNavigate }) {
         </div>
       </div>
 
-      {/* ── Page body ────────────────────────────────────── */}
+      {/* ── Page body ─────────────────────────────────── */}
       <div style={{ padding: '32px 36px 60px' }}>
 
-        {/* ── Dataset section ──────────────────────────── */}
+        {/* Dataset section */}
         <section style={{ marginBottom: 40 }}>
           <div style={{
             fontSize: 10, fontWeight: 700, color: C.textDim,
@@ -611,7 +664,6 @@ export default function ProjectDetail({ onNavigate }) {
               fileRef={fileRef}
             />
           ) : (
-            /* Compact dataset card */
             <div style={{
               display: 'flex', alignItems: 'center', gap: 16,
               padding: '16px 20px',
@@ -620,7 +672,6 @@ export default function ProjectDetail({ onNavigate }) {
               borderRadius: 14, maxWidth: 600,
               boxShadow: '0 1px 3px rgba(0,0,0,0.04)',
             }}>
-              {/* Icon */}
               <div style={{
                 width: 44, height: 44, borderRadius: 12, flexShrink: 0,
                 background: C.greenBg, border: `1px solid ${C.greenBd}`,
@@ -628,18 +679,13 @@ export default function ProjectDetail({ onNavigate }) {
               }}>
                 <FileSpreadsheet size={20} strokeWidth={1.6} style={{ color: C.green }} />
               </div>
-
-              {/* Info */}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{
                   fontSize: 13, fontWeight: 700, color: C.text,
                   overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
                   letterSpacing: '-0.01em',
                 }}>{dataset.file_name}</div>
-                <div style={{
-                  display: 'flex', gap: 10, marginTop: 4,
-                  fontSize: 11, color: C.textSub,
-                }}>
+                <div style={{ display: 'flex', gap: 10, marginTop: 4, fontSize: 11, color: C.textSub }}>
                   <span>{dataset.row_count?.toLocaleString()} rows</span>
                   <span>·</span>
                   <span>{dataset.col_count} cols</span>
@@ -647,8 +693,6 @@ export default function ProjectDetail({ onNavigate }) {
                   <span>{fmtBytes(dataset.size_bytes)}</span>
                 </div>
               </div>
-
-              {/* Status badge */}
               <div style={{
                 display: 'flex', alignItems: 'center', gap: 5,
                 padding: '4px 10px', borderRadius: 99,
@@ -662,7 +706,7 @@ export default function ProjectDetail({ onNavigate }) {
           )}
         </section>
 
-        {/* ── Dashboards section ───────────────────────── */}
+        {/* Dashboards section */}
         <section>
           <div style={{
             display: 'flex', alignItems: 'center',
@@ -676,10 +720,7 @@ export default function ProjectDetail({ onNavigate }) {
                 Dashboards · {dashboards.length}
               </div>
               {!dataset && (
-                <div style={{
-                  display: 'flex', alignItems: 'center', gap: 5,
-                  fontSize: 11, color: C.amber,
-                }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, color: C.amber }}>
                   <AlertTriangle size={11} strokeWidth={2} />
                   Upload a dataset to create dashboards
                 </div>
@@ -690,10 +731,9 @@ export default function ProjectDetail({ onNavigate }) {
           {dashboards.length === 0 ? (
             <DashboardsEmptyState
               hasDataset={!!dataset}
-              onCreate={() => navigate(`/projects/${projectId}/dashboards/new`)}
+              onCreate={() => setShowNewDash(true)}
             />
           ) : (
-            /* Ultra-minimalist list */
             <div style={{
               background: C.card,
               border: `1px solid ${C.border}`,
@@ -703,10 +743,8 @@ export default function ProjectDetail({ onNavigate }) {
             }}>
               {/* List header */}
               <div style={{
-                display: 'flex', gap: 14,
-                padding: '10px 18px',
-                background: '#f9fafb',
-                borderBottom: `1px solid ${C.border}`,
+                display: 'flex', gap: 14, padding: '10px 18px',
+                background: '#f9fafb', borderBottom: `1px solid ${C.border}`,
                 fontSize: 10, fontWeight: 700, color: C.textDim,
                 textTransform: 'uppercase', letterSpacing: '0.07em',
               }}>
@@ -726,11 +764,8 @@ export default function ProjectDetail({ onNavigate }) {
                 />
               ))}
 
-              {/* Add row */}
               {dataset && (
-                <AddDashboardRow
-                  onClick={() => navigate(`/projects/${projectId}/dashboards/new`)}
-                />
+                <AddDashboardRow onClick={() => setShowNewDash(true)} />
               )}
             </div>
           )}
@@ -745,41 +780,15 @@ export default function ProjectDetail({ onNavigate }) {
       {showSchema && dataset && (
         <SchemaModal dataset={dataset} onClose={() => setShowSchema(false)} />
       )}
-    </div>
-  )
-}
 
-// ── Add dashboard row ─────────────────────────────────────────────
-function AddDashboardRow({ onClick }) {
-  const [hov, setHov] = useState(false)
-  return (
-    <div
-      onClick={onClick}
-      onMouseEnter={() => setHov(true)}
-      onMouseLeave={() => setHov(false)}
-      style={{
-        display: 'flex', alignItems: 'center', gap: 10,
-        padding: '12px 18px',
-        background: hov ? C.accentBg : 'transparent',
-        cursor: 'pointer', transition: 'background 0.12s',
-        borderTop: `1px solid ${C.border}`,
-      }}
-    >
-      <div style={{
-        width: 22, height: 22, borderRadius: 6,
-        background: hov ? C.accent : C.accentBg,
-        border: `1px solid ${hov ? C.accent : C.accentBd}`,
-        display: 'flex', alignItems: 'center', justifyContent: 'center',
-        transition: 'all 0.15s',
-      }}>
-        <Plus size={12} strokeWidth={2.5}
-          style={{ color: hov ? '#fff' : C.accent }} />
-      </div>
-      <span style={{
-        fontSize: 12, fontWeight: 600,
-        color: hov ? C.accent : C.textDim,
-        transition: 'color 0.15s',
-      }}>New Dashboard</span>
+      {/* ── New Dashboard modal ───────────────────────── */}
+      {showNewDash && (
+        <NewDashboardModal
+          projectId={projectId}
+          onConfirm={handleCreateDashboard}
+          onClose={() => setShowNewDash(false)}
+        />
+      )}
     </div>
   )
 }
