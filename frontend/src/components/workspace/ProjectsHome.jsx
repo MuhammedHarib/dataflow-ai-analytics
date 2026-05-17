@@ -8,9 +8,34 @@ import { useNavigate } from 'react-router-dom'
 import {
   LayoutDashboard, MessageSquare, Database,
   Plus, Trash2, FolderOpen, ArrowRight,
+  TrendingUp, BarChart2, DollarSign, Globe,
+  Cpu, Target, FlaskConical, Users, Zap,
 } from 'lucide-react'
 import { projectsApi } from '../../api/client'
 import NewProjectModal from './NewProjectModal'
+
+// ── Icon registry — mirrors NewProjectModal ICONS list ────────────
+const ICON_MAP = {
+  dashboard: LayoutDashboard,
+  trending:  TrendingUp,
+  bar:       BarChart2,
+  dollar:    DollarSign,
+  globe:     Globe,
+  cpu:       Cpu,
+  target:    Target,
+  flask:     FlaskConical,
+  users:     Users,
+  zap:       Zap,
+}
+
+/** Resolves project.icon string ID → Lucide component.
+ *  Falls back to emoji for any legacy projects that stored emoji. */
+function ProjectIcon({ icon, color, size = 20 }) {
+  const Icon = ICON_MAP[icon]
+  if (Icon) return <Icon size={size} strokeWidth={1.8} color={color} />
+  // Legacy emoji / unknown string — render as text
+  return <span style={{ fontSize: size - 2, lineHeight: 1 }}>{icon || '📊'}</span>
+}
 
 // ── Design tokens ─────────────────────────────────────────────────
 const C = {
@@ -74,6 +99,7 @@ function ProjectCard({ project, onOpen, onDelete }) {
 
   const age    = Math.floor((Date.now() - new Date(project.updated_at)) / 86400000)
   const ageStr = age === 0 ? 'Today' : age === 1 ? 'Yesterday' : `${age}d ago`
+  const projectColor = project.color || C.accent
 
   return (
     <div
@@ -97,7 +123,7 @@ function ProjectCard({ project, onOpen, onDelete }) {
       <div style={{
         position: 'absolute', left: 0, top: '15%', bottom: '15%',
         width: 3, borderRadius: '0 3px 3px 0',
-        background: project.color || C.accent,
+        background: projectColor,
         opacity: hov ? 1 : 0,
         transition: 'opacity 0.18s',
       }} />
@@ -123,15 +149,16 @@ function ProjectCard({ project, onOpen, onDelete }) {
         </button>
       )}
 
-      {/* Project icon */}
+      {/* ── Project icon — resolves ID string to Lucide component ── */}
       <div style={{
         width: 44, height: 44, borderRadius: 12, marginBottom: 16,
-        background: `${project.color || C.accent}14`,
-        border: `1px solid ${project.color || C.accent}25`,
+        background: `${projectColor}14`,
+        border: `1px solid ${projectColor}28`,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        fontSize: 20,
+        flexShrink: 0,
+        transition: 'all 0.15s',
       }}>
-        {project.icon || '📊'}
+        <ProjectIcon icon={project.icon} color={projectColor} size={20} />
       </div>
 
       {/* Name */}
