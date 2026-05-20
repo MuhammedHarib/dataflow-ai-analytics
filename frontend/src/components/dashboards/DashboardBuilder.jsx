@@ -686,7 +686,7 @@ function TableWidget({ cfg, data, S }) {
 }
 
 // ── WidgetCard — modern, professional, strong visual presence ────────────────
-function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDrillDown, S }) {
+function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDrillDown, onExpand, S }) {
   const data    = useMemo(() => computeWidgetData(rawData, cfg, allFilters), [rawData, cfg, allFilters])
   const isTable = cfg.type === 'table'
   const isKPI   = cfg.type === 'kpi'
@@ -841,8 +841,29 @@ function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDr
           </div>
         </div>
 
-        {editMode && (
-          <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
+        {/* Right-side buttons: expand always visible, edit/remove in edit mode */}
+        <div style={{ display: 'flex', gap: 4, flexShrink: 0, marginLeft: 8 }}>
+          {/* Expand button — always visible */}
+          <button
+            onClick={e => { e.stopPropagation(); onExpand && onExpand(cfg.id) }}
+            onMouseDown={e => e.stopPropagation()}
+            title="Expand to fullscreen"
+            style={{
+              width: 26, height: 26, borderRadius: 7,
+              background: isLight ? '#F3F4F6' : 'rgba(255,255,255,0.06)',
+              border: `1px solid ${S.border}`,
+              color: S.muted, cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              transition: 'all 0.15s',
+            }}
+            onMouseEnter={e => { e.currentTarget.style.background = L.accentBg; e.currentTarget.style.color = L.accent; e.currentTarget.style.borderColor = L.accentBd }}
+            onMouseLeave={e => { e.currentTarget.style.background = isLight ? '#F3F4F6' : 'rgba(255,255,255,0.06)'; e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
+            <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" style={{ pointerEvents: 'none' }}>
+              <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+            </svg>
+          </button>
+
+          {editMode && (<>
             <button
               onClick={e => { e.stopPropagation(); onEdit() }}
               onMouseDown={e => e.stopPropagation()}
@@ -879,8 +900,8 @@ function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDr
                 <path d="M18 6 6 18M6 6l12 12" />
               </svg>
             </button>
-          </div>
-        )}
+          </>)}
+        </div>
       </div>
 
       {/* Chart body */}
@@ -1277,6 +1298,7 @@ export default function DashboardBuilder() {
   const [generating,    setGenerating]    = useState(false)
   const [dbId,          setDbId]          = useState(isNew ? null : Number(dashboardId))
   const [saveStatus,    setSaveStatus]    = useState('')
+  const [expandedId,    setExpandedId]    = useState(null)   // widget id currently in fullscreen
 
   const draggingTypeRef = useRef(null)
   const autoSave        = useRef(null)
@@ -1389,40 +1411,106 @@ export default function DashboardBuilder() {
 
   const handleGenerate = useCallback(() => {
     if (!aiPrompt.trim()) return
+    // ── Fix 1: Clear prompt immediately so field doesn't linger ──
+    const prompt = aiPrompt.trim()
+    setAiPrompt('')
     setGenerating(true)
-    setTimeout(() => {
-      const p = aiPrompt.toLowerCase()
-      const newWidgets = [], newLayout = []
-      let row = 0, col = 0
 
-      const add = (type, title, extraCfg = {}) => {
-        const tid = CHART_TYPES.find(t => t.id === type)
-        const w = tid?.w ?? 6, h = tid?.h ?? 5
-        if (col + w > 12) { col = 0; row += h }
+    setTimeout(() => {
+      const p = prompt.toLowerCase()
+      const newWidgets = []
+      const newLayout  = []
+      const numCols    = schema?.numeric || []
+      const catCol     = schema?.categorical?.[0] || schema?.all?.[0] || ''
+      const numCol     = numCols[0] || ''
+
+      // ── Fix 2: Standardised Bento layout template ─────────────
+      // KPI cards always sit in a fixed top row of 3-wide × 3-high slots
+      // Charts always 6-wide × 5-high (half canvas)
+      // Wide charts (table, ranking+chart pairs) get 12 or 8 wide
+      // Row cursor tracks the current y position
+
+      let curY = 0   // current row top in grid units
+
+      // ── Helper: place a widget at absolute x,y with fixed dims ──
+      const place = (type, title, x, y, w, h, extraCfg = {}) => {
         const id = `w_${Date.now()}_${newWidgets.length}`
-        newWidgets.push({ id, type, title, x_col: schema?.categorical?.[0] || '', y_col: schema?.numeric?.[0] || '', aggregation: 'sum', ...extraCfg })
-        newLayout.push({ i: id, x: col, y: row, w, h })
-        col += w; if (col >= 12) { col = 0; row += h }
+        newWidgets.push({
+          id, type, title,
+          x_col: catCol, y_col: numCol,
+          aggregation: 'sum', topN: null,
+          ...extraCfg,
+        })
+        newLayout.push({ i: id, x, y, w, h })
       }
 
-      const numKPI = (() => { const m = aiPrompt.match(/(\d+)\s*kpi/i); return m ? parseInt(m[1]) : /kpi|card|metric|score/i.test(p) ? 4 : 0 })()
+      // ─── KPI row: up to 4 KPIs, each w:3 h:3, side-by-side ───
+      const numKPI = (() => {
+        const m = prompt.match(/(\d+)\s*kpi/i)
+        return m ? Math.min(parseInt(m[1]), 4) : /kpi|card|metric|score/i.test(p) ? 4 : 0
+      })()
       const KPI_LABELS = ['Total Revenue', 'Total Orders', 'Active Users', 'Conversion Rate', 'Avg Order Value', 'Profit Margin']
-      const numCols = schema?.numeric || []
-      for (let i = 0; i < numKPI && i < 6; i++) add('kpi', KPI_LABELS[i], { y_col: numCols[i] || numCols[0] || '', aggregation: i === 3 ? 'avg' : 'sum' })
 
-      if (/line|trend|time|monthly|weekly|daily|over/i.test(p))  add('line',    'Trend Over Time')
-      if (/area|filled|shaded/i.test(p))                         add('area',    'Performance Area')
-      if (/bar|column|categ|product|region|compar/i.test(p))     add('bar',     'Category Comparison')
-      if (/pie|donut|ring|distribution|share/i.test(p))          add('pie',     'Distribution')
-      if (/radar|spider|performance/i.test(p))                   add('radar',   'Performance Radar')
-      if (/scatter|correl|vs\b/i.test(p))                        add('scatter', 'Correlation', { x_col: schema?.numeric?.[0] || '', y_col: schema?.numeric?.[1] || '' })
-      if (/rank|top|list/i.test(p))                              add('ranking', 'Top Rankings')
-      if (/table/i.test(p))                                      add('table',   'Data Table', { sortBy: schema?.numeric?.[0] || '', sortDir: 'desc' })
+      if (numKPI > 0) {
+        // Exactly 4 KPIs → row of four 3-wide cards = full 12-col width
+        // 3 KPIs → 4+4+4
+        // 2 KPIs → 6+6
+        const kpiW = numKPI === 1 ? 6 : numKPI === 2 ? 6 : numKPI === 3 ? 4 : 3
+        for (let i = 0; i < numKPI && i < 6; i++) {
+          place('kpi', KPI_LABELS[i], i * kpiW, curY, kpiW, 3, {
+            y_col: numCols[i] || numCol,
+            aggregation: i === 3 ? 'avg' : 'sum',
+          })
+        }
+        curY += 3
+      }
 
-      if (!newWidgets.length) {
-        add('kpi', 'Key Metric', { y_col: schema?.numeric?.[0] || '' })
-        add('bar', 'Category Comparison')
-        add('line', 'Trend Over Time')
+      // ── Chart pairs: two charts side by side (6+6), each h:5 ──
+      // Collect which chart types the prompt wants
+      const chartQueue = []
+      if (/line|trend|time|monthly|weekly|daily|over/i.test(p))
+        chartQueue.push({ type: 'line',    title: 'Trend Over Time' })
+      if (/area|filled|shaded/i.test(p))
+        chartQueue.push({ type: 'area',    title: 'Performance Area' })
+      if (/bar|column|categ|product|region|compar/i.test(p))
+        chartQueue.push({ type: 'bar',     title: 'Category Comparison' })
+      if (/pie|donut|ring|distribution|share/i.test(p))
+        chartQueue.push({ type: 'pie',     title: 'Distribution' })
+      if (/radar|spider|performance/i.test(p))
+        chartQueue.push({ type: 'radar',   title: 'Performance Radar' })
+      if (/scatter|correl|vs\b/i.test(p))
+        chartQueue.push({ type: 'scatter', title: 'Correlation',
+          x_col: numCols[0] || '', y_col: numCols[1] || '' })
+      if (/rank|top|list/i.test(p))
+        chartQueue.push({ type: 'ranking', title: 'Top Rankings' })
+
+      // Default if nothing matched and no KPIs either
+      if (!chartQueue.length && numKPI === 0) {
+        chartQueue.push({ type: 'bar',  title: 'Category Comparison' })
+        chartQueue.push({ type: 'line', title: 'Trend Over Time' })
+        place('kpi', 'Key Metric', 0, curY, 3, 3, { y_col: numCol })
+        place('kpi', 'Total Count', 3, curY, 3, 3, { aggregation: 'count' })
+        curY += 3
+      }
+
+      // Lay charts out in pairs of 6+6 per row, each row h=5
+      for (let i = 0; i < chartQueue.length; i += 2) {
+        const left  = chartQueue[i]
+        const right = chartQueue[i + 1]
+        const { type: lt, title: ll, ...lExtra } = left
+        place(lt, ll, 0, curY, right ? 6 : 12, 5, lExtra)
+        if (right) {
+          const { type: rt, title: rl, ...rExtra } = right
+          place(rt, rl, 6, curY, 6, 5, rExtra)
+        }
+        curY += 5
+      }
+
+      // Table always goes full-width at the bottom if requested
+      if (/table/i.test(p)) {
+        place('table', 'Data Table', 0, curY, 12, 7, {
+          sortBy: numCol, sortDir: 'desc',
+        })
       }
 
       setWidgets(newWidgets)
@@ -1726,6 +1814,7 @@ export default function DashboardBuilder() {
                   cfg={w} rawData={rawData} allFilters={allFilters}
                   editMode={editMode} S={S}
                   onEdit={() => setEditingId(w.id)}
+                  onExpand={id => setExpandedId(id)}
                   onRemove={() => {
                     setWidgets(prev => prev.filter(x => x.id !== w.id))
                     setGridLayout(prev => prev.filter(l => l.i !== w.id))
@@ -1748,9 +1837,104 @@ export default function DashboardBuilder() {
         )}
       </div>
 
+      {/* ── Fullscreen expanded widget overlay ─────────────────────── */}
+      {expandedId && (() => {
+        const expandedWidget = widgets.find(w => w.id === expandedId)
+        if (!expandedWidget) return null
+        const expandedData = computeWidgetData(rawData, expandedWidget, allFilters)
+        const isTable = expandedWidget.type === 'table'
+        const typeColors = {
+          bar:'#6366f1',line:'#10B981',area:'#06B6D4',pie:'#F59E0B',
+          donut:'#EC4899',scatter:'#8B5CF6',radar:'#F97316',table:'#6B7280',ranking:'#EF4444',
+        }
+        const typeColor = isLight ? (typeColors[expandedWidget.type] || S.accent) : S.accent
+        return (
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 200,
+            background: isLight ? 'rgba(0,0,0,0.55)' : 'rgba(0,0,0,0.75)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '28px',
+            animation: 'db-fadein 0.18s ease',
+          }}
+            onClick={() => setExpandedId(null)}>
+            <div
+              onClick={e => e.stopPropagation()}
+              style={{
+                width: '100%', maxWidth: 1200,
+                height: '85vh',
+                background: isLight ? '#FFFFFF' : S.card,
+                border: `1px solid ${isLight ? '#E5E7EB' : S.border}`,
+                borderRadius: 18, overflow: 'hidden',
+                display: 'flex', flexDirection: 'column',
+                boxShadow: '0 32px 80px rgba(0,0,0,0.25)',
+              }}>
+              {/* Expanded header */}
+              <div style={{
+                display: 'flex', alignItems: 'center', gap: 12,
+                padding: '14px 20px',
+                borderBottom: `1px solid ${isLight ? '#F3F4F6' : S.border}`,
+                background: isLight ? '#FAFBFF' : 'transparent',
+                flexShrink: 0,
+              }}>
+                <div style={{
+                  width: 32, height: 32, borderRadius: 9, flexShrink: 0,
+                  background: `${typeColor}14`,
+                  border: `1px solid ${typeColor}28`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                }}>
+                  <ChartIcon type={expandedWidget.type} color={typeColor} size={15} />
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: S.text, letterSpacing: '-0.02em' }}>
+                    {expandedWidget.title || expandedWidget.type}
+                  </div>
+                  {expandedWidget.x_col && (
+                    <div style={{ fontSize: 11, color: S.muted, marginTop: 2 }}>
+                      {expandedWidget.x_col}{expandedWidget.y_col ? ` · ${expandedWidget.y_col}` : ''}
+                    </div>
+                  )}
+                </div>
+                {/* Collapse button */}
+                <button
+                  onClick={() => setExpandedId(null)}
+                  title="Close fullscreen"
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 6,
+                    padding: '7px 14px', borderRadius: 9,
+                    background: isLight ? '#F3F4F6' : 'rgba(255,255,255,0.07)',
+                    border: `1px solid ${S.border}`,
+                    color: S.muted, cursor: 'pointer', fontSize: 12, fontWeight: 500,
+                    fontFamily: L.font, transition: 'all 0.15s',
+                  }}
+                  onMouseEnter={e => { e.currentTarget.style.background = L.accentBg; e.currentTarget.style.color = L.accent; e.currentTarget.style.borderColor = L.accentBd }}
+                  onMouseLeave={e => { e.currentTarget.style.background = isLight ? '#F3F4F6' : 'rgba(255,255,255,0.07)'; e.currentTarget.style.color = S.muted; e.currentTarget.style.borderColor = S.border }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3M21 8h-3a2 2 0 0 1-2-2V3M3 16h3a2 2 0 0 1 2 2v3M16 21v-3a2 2 0 0 1 2-2h3" />
+                  </svg>
+                  Close
+                </button>
+              </div>
+              {/* Expanded chart body */}
+              <div style={{
+                flex: 1, minHeight: 0,
+                padding: isTable ? 0 : '16px',
+                overflow: 'hidden',
+              }}>
+                {isTable
+                  ? <TableWidget cfg={expandedWidget} data={expandedData} S={S} />
+                  : <ChartWidget cfg={expandedWidget} data={expandedData} S={S} onDrillDown={handleDrillDown} />
+                }
+              </div>
+            </div>
+          </div>
+        )
+      })()}
+
       {/* Global styles */}
       <style>{`
         @keyframes db-spin { to { transform: rotate(360deg); } }
+        @keyframes db-fadein { from { opacity: 0; } to { opacity: 1; } }
 
         /* Grid layout placeholder */
         .react-grid-item.react-grid-placeholder {
