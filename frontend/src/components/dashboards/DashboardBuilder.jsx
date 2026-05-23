@@ -211,7 +211,7 @@ function kpiPaletteIndex(id) {
   return h % KPI_PALETTES.length
 }
 
-// ── KPIWidget — rich, color-differentiated, modern ───────────────────────────
+// ── KPIWidget — compact modern card, designed for h:2 (120px) grid rows ──────
 function KPIWidget({ cfg, data, S }) {
   const value     = data?.[0]?.value ?? 0
   const change    = Number(cfg.change ?? 0)
@@ -220,8 +220,6 @@ function KPIWidget({ cfg, data, S }) {
   const aboveThreshold = threshold != null && value > threshold
   const belowThreshold = threshold != null && value < threshold
 
-  // Pick palette — light theme gets rich color-per-card treatment
-  // Dark themes use the scheme accent uniformly
   const pal = S.isLight
     ? KPI_PALETTES[kpiPaletteIndex(cfg.id)]
     : { accent: S.accent, bg: `${S.accent}14`, bd: `${S.accent}30`, icon: S.accent }
@@ -230,8 +228,7 @@ function KPIWidget({ cfg, data, S }) {
     : belowThreshold ? (cfg.belowColor || S.neg)
     : S.isLight ? pal.accent : S.text
 
-  // Sparkline mini bars — decorative, derived from value magnitude
-  const spark = [0.4, 0.6, 0.5, 0.8, 0.65, 0.9, 0.75, 1.0]
+  const spark = [0.35, 0.55, 0.45, 0.75, 0.6, 0.85, 0.7, 1.0]
 
   return (
     <div style={{
@@ -240,47 +237,59 @@ function KPIWidget({ cfg, data, S }) {
       position: 'relative', overflow: 'hidden',
       background: S.isLight ? '#FFFFFF' : S.card,
     }}>
-      {/* Bold left accent bar */}
+      {/* Left accent bar */}
       <div style={{
-        position: 'absolute', top: 0, left: 0, bottom: 0, width: 4,
+        position: 'absolute', top: 0, left: 0, bottom: 0, width: 3,
         background: pal.accent,
         borderRadius: '14px 0 0 14px',
       }} />
 
-      {/* Subtle tinted bg wash on light */}
+      {/* Tinted bg wash — light only */}
       {S.isLight && (
         <div style={{
-          position: 'absolute', top: 0, right: 0, bottom: 0, left: 4,
-          background: `linear-gradient(135deg, ${pal.bg} 0%, #ffffff 60%)`,
+          position: 'absolute', top: 0, right: 0, bottom: 0, left: 3,
+          background: `linear-gradient(135deg, ${pal.bg} 0%, #ffffff 55%)`,
           pointerEvents: 'none',
         }} />
       )}
 
-      {/* Content */}
+      {/* Content — compact padding for 120px height */}
       <div style={{
         position: 'relative', zIndex: 1,
-        padding: '18px 18px 14px 22px',
-        display: 'flex', flexDirection: 'column', height: '100%',
+        padding: '12px 14px 10px 16px',
+        display: 'flex', flexDirection: 'column',
+        height: '100%', justifyContent: 'space-between',
       }}>
-        {/* Top row: icon + title */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 10 }}>
+        {/* Top: label + sparkline */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{
-            width: 38, height: 38, borderRadius: 11,
-            background: pal.bg,
-            border: `1.5px solid ${pal.bd}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            flexShrink: 0,
+            display: 'flex', alignItems: 'center', gap: 7,
           }}>
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none"
-              stroke={pal.icon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 3v18h18M7 12v5M12 8v9M17 5v12" />
-            </svg>
+            <div style={{
+              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+              background: pal.bg,
+              border: `1px solid ${pal.bd}`,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+                stroke={pal.icon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3v18h18M7 12v5M12 8v9M17 5v12" />
+              </svg>
+            </div>
+            <div style={{
+              fontSize: 10, fontWeight: 700, color: S.muted,
+              textTransform: 'uppercase', letterSpacing: '0.06em',
+              overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
+              maxWidth: 120,
+            }}>
+              {cfg.title || 'Metric'}
+            </div>
           </div>
           {/* Mini sparkline */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 28, opacity: 0.5 }}>
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height: 22, opacity: 0.45, flexShrink: 0 }}>
             {spark.map((h, i) => (
               <div key={i} style={{
-                width: 4, borderRadius: 2,
+                width: 3, borderRadius: 2,
                 height: `${h * 100}%`,
                 background: pal.accent,
               }} />
@@ -288,56 +297,40 @@ function KPIWidget({ cfg, data, S }) {
           </div>
         </div>
 
-        {/* Label */}
+        {/* Middle: value — fixed font size, no flex:1 stretch */}
         <div style={{
-          fontSize: 11, fontWeight: 600, color: S.muted,
-          textTransform: 'uppercase', letterSpacing: '0.06em',
-          marginBottom: 4,
-          overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-        }}>
-          {cfg.title || 'Metric'}
-        </div>
-
-        {/* Value — large, bold, colored */}
-        <div style={{
-          fontSize: 30, fontWeight: 800,
+          fontSize: 26, fontWeight: 800,
           color: valueColor,
-          letterSpacing: '-1.5px', lineHeight: 1,
+          letterSpacing: '-1px', lineHeight: 1.1,
           fontVariantNumeric: 'tabular-nums',
-          marginBottom: 12,
-          flex: 1, display: 'flex', alignItems: 'center',
         }}>
           {fmtN(value)}
         </div>
 
-        {/* Footer: trend chip + threshold */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          {change !== 0 && (
+        {/* Bottom: trend chip */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+          {change !== 0 ? (
             <span style={{
-              display: 'inline-flex', alignItems: 'center', gap: 4,
-              fontSize: 11, fontWeight: 700,
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              fontSize: 10, fontWeight: 700,
               color: up ? '#059669' : '#DC2626',
               background: up ? '#D1FAE5' : '#FEE2E2',
               border: `1px solid ${up ? '#A7F3D0' : '#FECACA'}`,
-              borderRadius: 99, padding: '3px 10px',
+              borderRadius: 99, padding: '2px 8px',
             }}>
               {up ? '↑' : '↓'} {up ? '+' : ''}{change.toFixed(1)}%
             </span>
-          )}
-          {change === 0 && (
+          ) : (
             <span style={{
-              fontSize: 11, color: S.muted,
+              fontSize: 10, color: S.muted,
               display: 'flex', alignItems: 'center', gap: 4,
             }}>
-              <span style={{ width: 6, height: 6, borderRadius: '50%', background: pal.accent, display: 'inline-block' }} />
+              <span style={{ width: 5, height: 5, borderRadius: '50%', background: pal.accent, display: 'inline-block' }} />
               {cfg.y_col || 'metric'}
             </span>
           )}
           {threshold != null && (
-            <span style={{
-              fontSize: 10, color: S.dim || S.muted,
-              borderLeft: `2px solid ${S.border}`, paddingLeft: 7,
-            }}>
+            <span style={{ fontSize: 9, color: S.dim || S.muted, borderLeft: `2px solid ${S.border}`, paddingLeft: 6 }}>
               vs {fmtN(threshold)}
             </span>
           )}
@@ -414,9 +407,15 @@ function ChartWidget({ cfg, data, S, onDrillDown }) {
         <LineChart data={data} margin={mg}>
           <CartesianGrid {...gp} horizontal vertical={false} />
           <XAxis dataKey="name" {...ap} tickFormatter={tfmt} />
-          <YAxis {...ap} tickFormatter={fmtN} width={38} />
-          <Tooltip {...tt} />
-          <Line dataKey="value" stroke={PAL[0]} strokeWidth={2.5} dot={false}
+          <YAxis {...ap} tickFormatter={fmtN} width={42} />
+          <Tooltip {...tt} formatter={(v, n) => [fmtN(v), cfg.y_col || n]} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: S.muted, paddingTop: 4 }}
+            formatter={() => cfg.y_col || 'Value'}
+          />
+          <Line
+            dataKey="value" name={cfg.y_col || 'Value'}
+            stroke={PAL[0]} strokeWidth={2.5} dot={false}
             activeDot={{ r: 5, fill: PAL[0], stroke: S.card, strokeWidth: 2 }} />
           {cfg.showAvg && (() => {
             const avg = data.reduce((s, d) => s + (Number(d.value) || 0), 0) / data.length
@@ -440,9 +439,15 @@ function ChartWidget({ cfg, data, S, onDrillDown }) {
           </defs>
           <CartesianGrid {...gp} horizontal vertical={false} />
           <XAxis dataKey="name" {...ap} tickFormatter={tfmt} />
-          <YAxis {...ap} tickFormatter={fmtN} width={38} />
-          <Tooltip {...tt} />
-          <Area dataKey="value" stroke={PAL[0]} fill={`url(#ag_${cfg.id})`} strokeWidth={2.5} dot={false}
+          <YAxis {...ap} tickFormatter={fmtN} width={42} />
+          <Tooltip {...tt} formatter={(v, n) => [fmtN(v), cfg.y_col || n]} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: S.muted, paddingTop: 4 }}
+            formatter={() => cfg.y_col || 'Value'}
+          />
+          <Area
+            dataKey="value" name={cfg.y_col || 'Value'}
+            stroke={PAL[0]} fill={`url(#ag_${cfg.id})`} strokeWidth={2.5} dot={false}
             activeDot={{ r: 5, fill: PAL[0], stroke: S.card, strokeWidth: 2 }} />
         </AreaChart>
       </ResponsiveContainer>
@@ -468,8 +473,18 @@ function ChartWidget({ cfg, data, S, onDrillDown }) {
             textAnchor={data.length > 10 ? 'end' : 'middle'}
             height={data.length > 10 ? 48 : 24} />
           <YAxis {...ap} tickFormatter={fmtN} width={42} />
-          <Tooltip {...tt} cursor={{ fill: isLight ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.04)', radius: [4,4,0,0] }} />
-          <Bar dataKey="value" radius={[6, 6, 0, 0]} maxBarSize={60}
+          <Tooltip {...tt}
+            cursor={{ fill: isLight ? 'rgba(99,102,241,0.06)' : 'rgba(255,255,255,0.04)', radius: [4,4,0,0] }}
+            formatter={(v, n) => [fmtN(v), cfg.y_col || n]}
+            labelFormatter={l => `${cfg.x_col || 'Category'}: ${l}`}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: S.muted, paddingTop: 4 }}
+            formatter={() => cfg.y_col || 'Value'}
+          />
+          <Bar
+            dataKey="value" name={cfg.y_col || 'Value'}
+            radius={[6, 6, 0, 0]} maxBarSize={60}
             cursor={onDrillDown ? 'pointer' : 'default'} onClick={handleClick}>
             {data.map((d, i) => {
               let fill = `url(#barGrad_${cfg.id}_${i % PAL.length})`
@@ -497,10 +512,16 @@ function ChartWidget({ cfg, data, S, onDrillDown }) {
             <Pie data={data} dataKey="value" nameKey="name"
               cx="50%" cy="50%" outerRadius="68%" innerRadius={`${inner}%`} paddingAngle={2}
               onClick={handleClick}>
-              {data.map((_, i) => <Cell key={i} fill={PAL[i % PAL.length]} />)}
+              {data.map((d, i) => <Cell key={i} fill={PAL[i % PAL.length]} />)}
             </Pie>
-            <Tooltip {...tt} formatter={(v) => [fmtN(v), `${((v / total) * 100).toFixed(1)}%`]} />
-            <Legend wrapperStyle={{ fontSize: 10, color: S.muted }} />
+            <Tooltip {...tt}
+              formatter={(v, n) => [fmtN(v), n]}
+              labelFormatter={l => `${cfg.x_col || 'Category'}: ${l}`}
+            />
+            <Legend
+              wrapperStyle={{ fontSize: 10, color: S.muted }}
+              formatter={(value) => value}
+            />
           </PieChart>
         </ResponsiveContainer>
       </div>
@@ -512,10 +533,16 @@ function ChartWidget({ cfg, data, S, onDrillDown }) {
       <ResponsiveContainer width="100%" height="100%">
         <RadarChart data={data}>
           <PolarGrid stroke={isLight ? '#E5E7EB' : 'rgba(255,255,255,0.08)'} />
-          <PolarAngleAxis dataKey="name" tick={{ fontSize: 9, fill: S.muted }} />
+          <PolarAngleAxis dataKey="name" tick={{ fontSize: 10, fill: S.muted }} />
           <PolarRadiusAxis tick={false} />
-          <Radar dataKey="value" stroke={PAL[0]} fill={PAL[0]} fillOpacity={0.2} strokeWidth={2} />
-          <Tooltip {...tt} />
+          <Radar
+            dataKey="value" name={cfg.y_col || 'Value'}
+            stroke={PAL[0]} fill={PAL[0]} fillOpacity={0.2} strokeWidth={2} />
+          <Tooltip {...tt} formatter={(v, n) => [fmtN(v), cfg.y_col || n]} />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: S.muted, paddingTop: 4 }}
+            formatter={() => cfg.y_col || 'Value'}
+          />
         </RadarChart>
       </ResponsiveContainer>
     </div>
@@ -526,10 +553,31 @@ function ChartWidget({ cfg, data, S, onDrillDown }) {
       <ResponsiveContainer width="100%" height="100%">
         <ScatterChart margin={mg}>
           <CartesianGrid {...gp} />
-          <XAxis dataKey="x" {...ap} tickFormatter={fmtN} name={cfg.x_col} />
-          <YAxis dataKey="y" {...ap} tickFormatter={fmtN} name={cfg.y_col} />
-          <Tooltip {...tt} formatter={(v, n) => [fmtN(v), n]} />
-          <Scatter data={data} fill={PAL[0]} opacity={0.7} />
+          <XAxis dataKey="x" {...ap} tickFormatter={fmtN} name={cfg.x_col}
+            label={{ value: cfg.x_col || 'X', position: 'insideBottom', offset: -4, fontSize: 10, fill: S.muted }} />
+          <YAxis dataKey="y" {...ap} tickFormatter={fmtN} name={cfg.y_col}
+            label={{ value: cfg.y_col || 'Y', angle: -90, position: 'insideLeft', offset: 10, fontSize: 10, fill: S.muted }} />
+          <Tooltip {...tt}
+            cursor={{ strokeDasharray: '3 3' }}
+            content={({ active, payload }) => {
+              if (!active || !payload?.length) return null
+              const d = payload[0]?.payload || {}
+              return (
+                <div style={{ ...tt.contentStyle, padding: '8px 12px' }}>
+                  <div style={{ fontSize: 11, color: S.muted, marginBottom: 4 }}>Correlation</div>
+                  <div style={{ fontSize: 12, color: S.text }}>{cfg.x_col || 'X'}: <b>{fmtN(d.x)}</b></div>
+                  <div style={{ fontSize: 12, color: S.text }}>{cfg.y_col || 'Y'}: <b>{fmtN(d.y)}</b></div>
+                </div>
+              )
+            }}
+          />
+          <Legend
+            wrapperStyle={{ fontSize: 11, color: S.muted, paddingTop: 4 }}
+            formatter={() => `${cfg.x_col || 'X'} vs ${cfg.y_col || 'Y'}`}
+          />
+          <Scatter
+            name={`${cfg.x_col || 'X'} vs ${cfg.y_col || 'Y'}`}
+            data={data} fill={PAL[0]} opacity={0.7} />
         </ScatterChart>
       </ResponsiveContainer>
     </div>
@@ -1411,28 +1459,33 @@ export default function DashboardBuilder() {
 
   const handleGenerate = useCallback(() => {
     if (!aiPrompt.trim()) return
-    // ── Fix 1: Clear prompt immediately so field doesn't linger ──
     const prompt = aiPrompt.trim()
-    setAiPrompt('')
+    setAiPrompt('')   // clear immediately
     setGenerating(true)
 
     setTimeout(() => {
       const p = prompt.toLowerCase()
       const newWidgets = []
       const newLayout  = []
-      const numCols    = schema?.numeric || []
-      const catCol     = schema?.categorical?.[0] || schema?.all?.[0] || ''
-      const numCol     = numCols[0] || ''
+      const numCols    = schema?.numeric  || []
+      const catCols    = schema?.categorical || []
+      const dateCols   = schema?.dates    || []
+      const allCols    = schema?.all      || []
 
-      // ── Fix 2: Standardised Bento layout template ─────────────
-      // KPI cards always sit in a fixed top row of 3-wide × 3-high slots
-      // Charts always 6-wide × 5-high (half canvas)
-      // Wide charts (table, ranking+chart pairs) get 12 or 8 wide
-      // Row cursor tracks the current y position
+      // Smart column picker — tries to find semantically relevant columns
+      const findCol = (...keywords) => {
+        for (const kw of keywords) {
+          const found = allCols.find(c => c.toLowerCase().includes(kw.toLowerCase()))
+          if (found) return found
+        }
+        return numCols[0] || allCols[0] || ''
+      }
+      const catCol  = catCols[0]  || allCols[0]  || ''
+      const dateCol = dateCols[0] || catCols[0]  || allCols[0] || ''
+      const numCol  = numCols[0]  || ''
 
-      let curY = 0   // current row top in grid units
+      let curY = 0
 
-      // ── Helper: place a widget at absolute x,y with fixed dims ──
       const place = (type, title, x, y, w, h, extraCfg = {}) => {
         const id = `w_${Date.now()}_${newWidgets.length}`
         newWidgets.push({
@@ -1444,74 +1497,157 @@ export default function DashboardBuilder() {
         newLayout.push({ i: id, x, y, w, h })
       }
 
-      // ─── KPI row: up to 4 KPIs, each w:3 h:3, side-by-side ───
-      const numKPI = (() => {
-        const m = prompt.match(/(\d+)\s*kpi/i)
-        return m ? Math.min(parseInt(m[1]), 4) : /kpi|card|metric|score/i.test(p) ? 4 : 0
-      })()
-      const KPI_LABELS = ['Total Revenue', 'Total Orders', 'Active Users', 'Conversion Rate', 'Avg Order Value', 'Profit Margin']
+      // ── STEP 1: Detect how many KPIs are wanted ───────────────────
+      // Handles: "4 KPI cards", "KPI for revenue/profit/expenses/margin",
+      // bullet lists of metrics, financial analyst prompts, etc.
+      const kpiKeywords = /kpi|card|metric|revenue|profit|expense|margin|growth|sales|cost|income|loss|earning|turnover|conversion|rate|score|total|sum|count|average/i
+      const kpiMatches  = prompt.match(/(\d+)\s*kpi/i)
+      let numKPI = 0
 
+      if (kpiMatches) {
+        numKPI = Math.min(parseInt(kpiMatches[1]), 6)
+      } else if (kpiKeywords.test(p)) {
+        // Count bullet-point style metric mentions
+        const bulletCount = (prompt.match(/[•\-*]\s*\w/g) || []).length
+        numKPI = bulletCount >= 3 ? Math.min(bulletCount, 6) : 4
+      }
+
+      // ── STEP 2: Build smart KPI labels from dataset columns ───────
+      const KPI_LABEL_MAP = [
+        { keys: ['revenue','sales','income','turnover','gross'],          label: 'Total Revenue' },
+        { keys: ['profit','net','earning','margin_val'],                  label: 'Net Profit' },
+        { keys: ['expense','cost','spend','operating'],                   label: 'Total Expenses' },
+        { keys: ['margin','rate','percent','ratio','pct'],                label: 'Profit Margin %' },
+        { keys: ['growth','change','delta','increase'],                   label: 'Growth Rate %' },
+        { keys: ['order','transaction','deal','sale','unit','qty','sold'], label: 'Total Orders' },
+        { keys: ['customer','user','client','account','lead'],            label: 'Active Users' },
+        { keys: ['conversion','convert','ctr','win'],                     label: 'Conversion Rate' },
+      ]
+
+      const kpiDefs = []
+      const usedCols = new Set()
+
+      // Try to match dataset columns to semantic KPI slots
+      for (const def of KPI_LABEL_MAP) {
+        if (kpiDefs.length >= numKPI) break
+        const col = numCols.find(c =>
+          !usedCols.has(c) && def.keys.some(k => c.toLowerCase().includes(k))
+        )
+        if (col) {
+          usedCols.add(col)
+          kpiDefs.push({ label: def.label, col, agg: def.keys.includes('rate') || def.keys.includes('margin') ? 'avg' : 'sum' })
+        }
+      }
+
+      // Fill remaining KPI slots with available numeric columns
+      for (const col of numCols) {
+        if (kpiDefs.length >= numKPI) break
+        if (!usedCols.has(col)) {
+          usedCols.add(col)
+          kpiDefs.push({ label: col, col, agg: 'sum' })
+        }
+      }
+
+      // Fallback: if still not enough, use generic labels
+      const FALLBACK_LABELS = ['Total Revenue','Total Orders','Active Users','Conversion Rate','Avg Order Value','Profit Margin']
+      while (kpiDefs.length < numKPI) {
+        const idx = kpiDefs.length
+        kpiDefs.push({ label: FALLBACK_LABELS[idx] || `Metric ${idx + 1}`, col: numCol, agg: 'sum' })
+      }
+
+      // ── STEP 3: Place KPI row — h:2 (120px), compact ─────────────
       if (numKPI > 0) {
-        // Exactly 4 KPIs → row of four 3-wide cards = full 12-col width
-        // 3 KPIs → 4+4+4
-        // 2 KPIs → 6+6
-        const kpiW = numKPI === 1 ? 6 : numKPI === 2 ? 6 : numKPI === 3 ? 4 : 3
-        for (let i = 0; i < numKPI && i < 6; i++) {
-          place('kpi', KPI_LABELS[i], i * kpiW, curY, kpiW, 3, {
-            y_col: numCols[i] || numCol,
-            aggregation: i === 3 ? 'avg' : 'sum',
+        const kpiW = numKPI <= 2 ? 6 : numKPI === 3 ? 4 : numKPI === 5 ? 4 : 3
+        // If 5 KPIs: first row 3+3+3+3, second row 6+6 (but keep it simple: place all in one row capped at 4)
+        const row1Count = Math.min(numKPI, 4)
+        const row1W = numKPI === 1 ? 6 : numKPI === 2 ? 6 : numKPI === 3 ? 4 : 3
+        for (let i = 0; i < row1Count; i++) {
+          const def = kpiDefs[i]
+          place('kpi', def.label, i * row1W, curY, row1W, 2, {
+            y_col: def.col, aggregation: def.agg,
           })
         }
-        curY += 3
+        curY += 2
+
+        // If more than 4 KPIs, place remainder in a second row
+        if (numKPI > 4) {
+          const extra = numKPI - 4
+          const extraW = extra === 1 ? 6 : 4
+          for (let i = 0; i < extra; i++) {
+            const def = kpiDefs[4 + i]
+            place('kpi', def.label, i * extraW, curY, extraW, 2, {
+              y_col: def.col, aggregation: def.agg,
+            })
+          }
+          curY += 2
+        }
       }
 
-      // ── Chart pairs: two charts side by side (6+6), each h:5 ──
-      // Collect which chart types the prompt wants
+      // ── STEP 4: Detect chart types from prompt ────────────────────
+      // Uses broad matching so complex financial prompts work correctly
       const chartQueue = []
-      if (/line|trend|time|monthly|weekly|daily|over/i.test(p))
-        chartQueue.push({ type: 'line',    title: 'Trend Over Time' })
-      if (/area|filled|shaded/i.test(p))
-        chartQueue.push({ type: 'area',    title: 'Performance Area' })
-      if (/bar|column|categ|product|region|compar/i.test(p))
-        chartQueue.push({ type: 'bar',     title: 'Category Comparison' })
-      if (/pie|donut|ring|distribution|share/i.test(p))
-        chartQueue.push({ type: 'pie',     title: 'Distribution' })
-      if (/radar|spider|performance/i.test(p))
-        chartQueue.push({ type: 'radar',   title: 'Performance Radar' })
-      if (/scatter|correl|vs\b/i.test(p))
-        chartQueue.push({ type: 'scatter', title: 'Correlation',
-          x_col: numCols[0] || '', y_col: numCols[1] || '' })
-      if (/rank|top|list/i.test(p))
-        chartQueue.push({ type: 'ranking', title: 'Top Rankings' })
 
-      // Default if nothing matched and no KPIs either
+      const wants = (...patterns) => patterns.some(pat =>
+        typeof pat === 'string' ? p.includes(pat) : pat.test(p)
+      )
+
+      // Revenue/trend line
+      if (wants('line','trend','time','month','week','daily','over time','recurring','yoy','mom','series','forecast','projection'))
+        chartQueue.push({ type:'line', title:'Revenue Trend', x_col:dateCol, y_col:findCol('revenue','sales','income','total'), aggregation:'sum' })
+
+      // Profit vs expenses bar / comparison
+      if (wants('bar','column','compar','profit vs','expense','cost breakdown','category','product','region','segment','top 10','top 5','top customers'))
+        chartQueue.push({ type:'bar', title:'Category Comparison', x_col:catCol, y_col:findCol('revenue','sales','profit','amount','total'), aggregation:'sum' })
+
+      // Area — margin trend, cash flow
+      if (wants('area','gross profit margin','cash flow','waterfall','filled'))
+        chartQueue.push({ type:'area', title:'Margin Trend', x_col:dateCol, y_col:findCol('margin','profit','gross','net'), aggregation:'sum' })
+
+      // Pie / donut — distribution
+      if (wants('pie','donut','ring','distribution','share','breakdown','composition'))
+        chartQueue.push({ type:'pie', title:'Revenue Distribution', x_col:catCol, y_col:findCol('revenue','sales','amount','total'), aggregation:'sum' })
+
+      // Ranking — top products/customers/regions
+      if (wants('rank','ranking','top','list','best','worst','performing','leaderboard'))
+        chartQueue.push({ type:'ranking', title:'Top Rankings', x_col:catCol, y_col:findCol('revenue','sales','profit','amount'), aggregation:'sum', topN:10 })
+
+      // Scatter — correlation heatmap
+      if (wants('scatter','correl','heatmap','vs ','versus','correlation'))
+        chartQueue.push({ type:'scatter', title:'Correlation Analysis', x_col:numCols[0]||'', y_col:numCols[1]||'', aggregation:'sum' })
+
+      // Radar — performance, quarterly
+      if (wants('radar','spider','performance dashboard','quarterly','executive'))
+        chartQueue.push({ type:'radar', title:'Performance Overview', x_col:catCol, y_col:numCol, aggregation:'avg' })
+
+      // Second line — projection/forecast
+      if (wants('forecast','projection','predict') && !chartQueue.some(c=>c.type==='line'))
+        chartQueue.push({ type:'line', title:'Forecast Projection', x_col:dateCol, y_col:numCol, aggregation:'sum' })
+
+      // Default fallback if nothing detected
       if (!chartQueue.length && numKPI === 0) {
-        chartQueue.push({ type: 'bar',  title: 'Category Comparison' })
-        chartQueue.push({ type: 'line', title: 'Trend Over Time' })
-        place('kpi', 'Key Metric', 0, curY, 3, 3, { y_col: numCol })
-        place('kpi', 'Total Count', 3, curY, 3, 3, { aggregation: 'count' })
-        curY += 3
+        chartQueue.push({ type:'bar',  title:'Category Overview', x_col:catCol, y_col:numCol, aggregation:'sum' })
+        chartQueue.push({ type:'line', title:'Trend Over Time',   x_col:dateCol, y_col:numCol, aggregation:'sum' })
+        place('kpi','Key Metric',  0, curY, 3, 2, { y_col:numCol })
+        place('kpi','Total Count', 3, curY, 3, 2, { aggregation:'count' })
+        curY += 2
       }
 
-      // Lay charts out in pairs of 6+6 per row, each row h=5
+      // ── STEP 5: Layout charts in 6+6 pairs per row, h:5 ──────────
       for (let i = 0; i < chartQueue.length; i += 2) {
         const left  = chartQueue[i]
         const right = chartQueue[i + 1]
-        const { type: lt, title: ll, ...lExtra } = left
+        const { type:lt, title:ll, ...lExtra } = left
         place(lt, ll, 0, curY, right ? 6 : 12, 5, lExtra)
         if (right) {
-          const { type: rt, title: rl, ...rExtra } = right
+          const { type:rt, title:rl, ...rExtra } = right
           place(rt, rl, 6, curY, 6, 5, rExtra)
         }
         curY += 5
       }
 
-      // Table always goes full-width at the bottom if requested
-      if (/table/i.test(p)) {
-        place('table', 'Data Table', 0, curY, 12, 7, {
-          sortBy: numCol, sortDir: 'desc',
-        })
-      }
+      // Table — always full-width at bottom
+      if (wants('table','data table','invoice','transaction','list view','detail'))
+        place('table', 'Data Table', 0, curY, 12, 7, { sortBy:numCol, sortDir:'desc' })
 
       setWidgets(newWidgets)
       setGridLayout(newLayout)
