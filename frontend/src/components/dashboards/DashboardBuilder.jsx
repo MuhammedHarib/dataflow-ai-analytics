@@ -48,15 +48,15 @@ const SCHEMES = {
 
 const CHART_TYPES = [
   { id:'kpi',     label:'KPI Card', w:3,  h:3 },
-  { id:'bar',     label:'Bar',      w:6,  h:5 },
-  { id:'line',    label:'Line',     w:6,  h:5 },
-  { id:'area',    label:'Area',     w:6,  h:5 },
-  { id:'pie',     label:'Pie',      w:5,  h:5 },
-  { id:'donut',   label:'Donut',    w:5,  h:5 },
-  { id:'scatter', label:'Scatter',  w:6,  h:5 },
-  { id:'radar',   label:'Radar',    w:5,  h:5 },
-  { id:'table',   label:'Table',    w:12, h:7 },
-  { id:'ranking', label:'Ranking',  w:4,  h:5 },
+  { id:'bar',     label:'Bar',      w:6,  h:6 },
+  { id:'line',    label:'Line',     w:6,  h:6 },
+  { id:'area',    label:'Area',     w:6,  h:6 },
+  { id:'pie',     label:'Pie',      w:5,  h:6 },
+  { id:'donut',   label:'Donut',    w:5,  h:6 },
+  { id:'scatter', label:'Scatter',  w:6,  h:6 },
+  { id:'radar',   label:'Radar',    w:5,  h:6 },
+  { id:'table',   label:'Table',    w:12, h:8 },
+  { id:'ranking', label:'Ranking',  w:4,  h:6 },
 ]
 
 const CHART_ICON_PATHS = {
@@ -236,6 +236,7 @@ function KPIWidget({ cfg, data, S }) {
       display: 'flex', flexDirection: 'column',
       position: 'relative', overflow: 'hidden',
       background: S.isLight ? '#FFFFFF' : S.card,
+      maxHeight: 160,  // hard cap — never taller than 120px regardless of grid
     }}>
       {/* Left accent bar */}
       <div style={{
@@ -253,40 +254,39 @@ function KPIWidget({ cfg, data, S }) {
         }} />
       )}
 
-      {/* Content — compact padding for 120px height */}
+      {/* Content — fills 150px (h:3 × rowHeight:50) proportionally */}
       <div style={{
         position: 'relative', zIndex: 1,
-        padding: '12px 14px 10px 16px',
+        padding: '14px 16px 14px 18px',
         display: 'flex', flexDirection: 'column',
-        height: '100%', justifyContent: 'space-between',
+        justifyContent: 'space-between',
+        height: '100%',
       }}>
-        {/* Top: label + sparkline */}
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{
-            display: 'flex', alignItems: 'center', gap: 7,
-          }}>
+        {/* Top: icon + label + sparkline */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <div style={{
-              width: 28, height: 28, borderRadius: 8, flexShrink: 0,
+              width: 30, height: 30, borderRadius: 9, flexShrink: 0,
               background: pal.bg,
               border: `1px solid ${pal.bd}`,
               display: 'flex', alignItems: 'center', justifyContent: 'center',
             }}>
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none"
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"
                 stroke={pal.icon} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M3 3v18h18M7 12v5M12 8v9M17 5v12" />
               </svg>
             </div>
             <div style={{
               fontSize: 10, fontWeight: 700, color: S.muted,
-              textTransform: 'uppercase', letterSpacing: '0.06em',
+              textTransform: 'uppercase', letterSpacing: '0.07em',
               overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap',
-              maxWidth: 120,
+              maxWidth: 130,
             }}>
               {cfg.title || 'Metric'}
             </div>
           </div>
-          {/* Mini sparkline */}
-          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 1.5, height: 22, opacity: 0.45, flexShrink: 0 }}>
+          {/* Mini sparkline — top right */}
+          <div style={{ display: 'flex', alignItems: 'flex-end', gap: 2, height: 24, opacity: 0.4, flexShrink: 0 }}>
             {spark.map((h, i) => (
               <div key={i} style={{
                 width: 3, borderRadius: 2,
@@ -297,18 +297,18 @@ function KPIWidget({ cfg, data, S }) {
           </div>
         </div>
 
-        {/* Middle: value — fixed font size, no flex:1 stretch */}
+        {/* Middle: large value */}
         <div style={{
-          fontSize: 26, fontWeight: 800,
+          fontSize: 30, fontWeight: 800,
           color: valueColor,
-          letterSpacing: '-1px', lineHeight: 1.1,
+          letterSpacing: '-1.5px', lineHeight: 1,
           fontVariantNumeric: 'tabular-nums',
         }}>
           {fmtN(value)}
         </div>
 
         {/* Bottom: trend chip */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 7 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           {change !== 0 ? (
             <span style={{
               display: 'inline-flex', alignItems: 'center', gap: 3,
@@ -316,21 +316,21 @@ function KPIWidget({ cfg, data, S }) {
               color: up ? '#059669' : '#DC2626',
               background: up ? '#D1FAE5' : '#FEE2E2',
               border: `1px solid ${up ? '#A7F3D0' : '#FECACA'}`,
-              borderRadius: 99, padding: '2px 8px',
+              borderRadius: 99, padding: '3px 9px',
             }}>
               {up ? '↑' : '↓'} {up ? '+' : ''}{change.toFixed(1)}%
             </span>
           ) : (
             <span style={{
               fontSize: 10, color: S.muted,
-              display: 'flex', alignItems: 'center', gap: 4,
+              display: 'flex', alignItems: 'center', gap: 5,
             }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: pal.accent, display: 'inline-block' }} />
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: pal.accent, display: 'inline-block' }} />
               {cfg.y_col || 'metric'}
             </span>
           )}
           {threshold != null && (
-            <span style={{ fontSize: 9, color: S.dim || S.muted, borderLeft: `2px solid ${S.border}`, paddingLeft: 6 }}>
+            <span style={{ fontSize: 9, color: S.dim || S.muted, borderLeft: `2px solid ${S.border}`, paddingLeft: 7 }}>
               vs {fmtN(threshold)}
             </span>
           )}
@@ -745,6 +745,7 @@ function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDr
     return (
       <div style={{
         height: '100%',
+        maxHeight: 160,
         background: isLight ? '#FFFFFF' : S.card,
         border: `1px solid ${isLight ? '#E5E7EB' : S.border}`,
         borderRadius: 14, overflow: 'hidden',
@@ -1390,9 +1391,14 @@ export default function DashboardBuilder() {
       setSchemeName(db.scheme || 'Light')
       if (db.layout?.widgets?.length) {
         const wids = db.layout.widgets.map(({ gx, gy, gw, gh, ...rest }) => rest)
-        const pos  = db.layout.widgets.map(({ id, gx, gy, gw, gh }) =>
-          ({ i: id, x: gx ?? 0, y: gy ?? 0, w: gw ?? 6, h: gh ?? 5 })
-        )
+        const pos  = db.layout.widgets.map(({ id, type, gx, gy, gw, gh }) => ({
+          i: id,
+          x: gx ?? 0,
+          y: gy ?? 0,
+          w: gw ?? 6,
+          // Clamp KPI height — old saves had h:3 or h:7, correct to h:2
+          h: type === 'kpi' ? 3 : (gh ?? 6),
+        }))
         setWidgets(wids)
         setGridLayout(pos)
         setEditMode(false)
@@ -1555,19 +1561,17 @@ export default function DashboardBuilder() {
         kpiDefs.push({ label: FALLBACK_LABELS[idx] || `Metric ${idx + 1}`, col: numCol, agg: 'sum' })
       }
 
-      // ── STEP 3: Place KPI row — h:2 (120px), compact ─────────────
+      // ── STEP 3: Place KPI row — h:3 (150px), compact ─────────────
       if (numKPI > 0) {
-        const kpiW = numKPI <= 2 ? 6 : numKPI === 3 ? 4 : numKPI === 5 ? 4 : 3
-        // If 5 KPIs: first row 3+3+3+3, second row 6+6 (but keep it simple: place all in one row capped at 4)
         const row1Count = Math.min(numKPI, 4)
         const row1W = numKPI === 1 ? 6 : numKPI === 2 ? 6 : numKPI === 3 ? 4 : 3
         for (let i = 0; i < row1Count; i++) {
           const def = kpiDefs[i]
-          place('kpi', def.label, i * row1W, curY, row1W, 2, {
+          place('kpi', def.label, i * row1W, curY, row1W, 3, {
             y_col: def.col, aggregation: def.agg,
           })
         }
-        curY += 2
+        curY += 3
 
         // If more than 4 KPIs, place remainder in a second row
         if (numKPI > 4) {
@@ -1575,11 +1579,11 @@ export default function DashboardBuilder() {
           const extraW = extra === 1 ? 6 : 4
           for (let i = 0; i < extra; i++) {
             const def = kpiDefs[4 + i]
-            place('kpi', def.label, i * extraW, curY, extraW, 2, {
+            place('kpi', def.label, i * extraW, curY, extraW, 3, {
               y_col: def.col, aggregation: def.agg,
             })
           }
-          curY += 2
+          curY += 3
         }
       }
 
@@ -1627,27 +1631,27 @@ export default function DashboardBuilder() {
       if (!chartQueue.length && numKPI === 0) {
         chartQueue.push({ type:'bar',  title:'Category Overview', x_col:catCol, y_col:numCol, aggregation:'sum' })
         chartQueue.push({ type:'line', title:'Trend Over Time',   x_col:dateCol, y_col:numCol, aggregation:'sum' })
-        place('kpi','Key Metric',  0, curY, 3, 2, { y_col:numCol })
-        place('kpi','Total Count', 3, curY, 3, 2, { aggregation:'count' })
-        curY += 2
+        place('kpi','Key Metric',  0, curY, 3, 3, { y_col:numCol })
+        place('kpi','Total Count', 3, curY, 3, 3, { aggregation:'count' })
+        curY += 3
       }
 
-      // ── STEP 5: Layout charts in 6+6 pairs per row, h:5 ──────────
+      // ── STEP 5: Layout charts in 6+6 pairs per row, h:6 ──────────
       for (let i = 0; i < chartQueue.length; i += 2) {
         const left  = chartQueue[i]
         const right = chartQueue[i + 1]
         const { type:lt, title:ll, ...lExtra } = left
-        place(lt, ll, 0, curY, right ? 6 : 12, 5, lExtra)
+        place(lt, ll, 0, curY, right ? 6 : 12, 6, lExtra)
         if (right) {
           const { type:rt, title:rl, ...rExtra } = right
-          place(rt, rl, 6, curY, 6, 5, rExtra)
+          place(rt, rl, 6, curY, 6, 6, rExtra)
         }
-        curY += 5
+        curY += 6
       }
 
       // Table — always full-width at bottom
       if (wants('table','data table','invoice','transaction','list view','detail'))
-        place('table', 'Data Table', 0, curY, 12, 7, { sortBy:numCol, sortDir:'desc' })
+        place('table', 'Data Table', 0, curY, 12, 8, { sortBy:numCol, sortDir:'desc' })
 
       setWidgets(newWidgets)
       setGridLayout(newLayout)
@@ -1933,7 +1937,7 @@ export default function DashboardBuilder() {
             className="layout"
             layout={gridLayout}
             cols={12}
-            rowHeight={60}
+            rowHeight={50}
             width={canvasW}
             isDraggable={editMode}
             isResizable={editMode}
@@ -1942,8 +1946,8 @@ export default function DashboardBuilder() {
             preventCollision={false}
             onLayoutChange={newL => setGridLayout(newL)}
             draggableHandle=".drag-handle"
-            margin={[12, 12]}
-            containerPadding={[14, 14]}>
+            margin={[10, 10]}
+            containerPadding={[12, 12]}>
             {widgets.map(w => (
               <div key={w.id} style={{ height: '100%' }}>
                 <WidgetCard
