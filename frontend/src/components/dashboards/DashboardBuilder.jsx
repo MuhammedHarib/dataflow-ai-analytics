@@ -236,7 +236,6 @@ function KPIWidget({ cfg, data, S }) {
       display: 'flex', flexDirection: 'column',
       position: 'relative', overflow: 'hidden',
       background: S.isLight ? '#FFFFFF' : S.card,
-      maxHeight: 160,  // hard cap — never taller than 120px regardless of grid
     }}>
       {/* Left accent bar */}
       <div style={{
@@ -745,7 +744,6 @@ function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDr
     return (
       <div style={{
         height: '100%',
-        maxHeight: 160,
         background: isLight ? '#FFFFFF' : S.card,
         border: `1px solid ${isLight ? '#E5E7EB' : S.border}`,
         borderRadius: 14, overflow: 'hidden',
@@ -1390,14 +1388,20 @@ export default function DashboardBuilder() {
       setDashTitle(db.name || 'Dashboard')
       setSchemeName(db.scheme || 'Light')
       if (db.layout?.widgets?.length) {
+        const MAX_H = { kpi: 3, bar: 10, line: 10, area: 10, pie: 10, donut: 10, scatter: 10, radar: 10, table: 12, ranking: 10 }
         const wids = db.layout.widgets.map(({ gx, gy, gw, gh, ...rest }) => rest)
         const pos  = db.layout.widgets.map(({ id, type, gx, gy, gw, gh }) => ({
           i: id,
-          x: gx ?? 0,
+          x: Math.min(gx ?? 0, 11),
           y: gy ?? 0,
-          w: gw ?? 6,
-          // Clamp KPI height — old saves had h:3 or h:7, correct to h:2
-          h: type === 'kpi' ? 3 : (gh ?? 6),
+          w: Math.min(Math.max(gw ?? 6, 1), 12),
+          // Hard clamp: KPI max h:3, others max h:10 — fixes all old dashboards
+          h: type === 'kpi'
+            ? 3
+            : Math.min(gh ?? 6, MAX_H[type] || 10),
+          minH: type === 'kpi' ? 2 : 3,
+          maxH: type === 'kpi' ? 3 : 12,
+          minW: type === 'kpi' ? 2 : 3,
         }))
         setWidgets(wids)
         setGridLayout(pos)
@@ -1414,7 +1418,10 @@ export default function DashboardBuilder() {
     draggingTypeRef.current = null
     if (!type) return
     const tid = CHART_TYPES.find(t => t.id === type)
-    const id = `w_${Date.now()}`
+    const id  = `w_${Date.now()}`
+    const w   = tid?.w ?? 6
+    const h   = tid?.h ?? 6
+
     setWidgets(prev => [...prev, {
       id, type,
       title: tid?.label || type,
@@ -1424,10 +1431,17 @@ export default function DashboardBuilder() {
       topN: null,
     }])
     setGridLayout(prev => {
-      const col = (prev.filter(l => l.i !== '__dropping-elem__').length % 2) * 6
+      const clean = prev.filter(l => l.i !== '__dropping-elem__')
+      // Find the bottom of the current layout
+      const maxY = clean.reduce((acc, l) => Math.max(acc, l.y + l.h), 0)
+      // Place at the next available row, alternating columns
+      const lastRow = clean.filter(l => l.y + l.h === maxY)
+      const usedX   = lastRow.reduce((acc, l) => acc + l.w, 0)
+      const x       = usedX + w <= 12 ? usedX : 0
+      const y       = x === 0 && usedX > 0 ? maxY : maxY - (lastRow[0]?.h ?? h)
       return [
-        ...prev.filter(l => l.i !== '__dropping-elem__'),
-        { i: id, x: col, y: 9999, w: tid?.w ?? 6, h: tid?.h ?? 5 },
+        ...clean,
+        { i: id, x: Math.max(0, x), y: Math.max(0, y < 0 ? maxY : y), w, h },
       ]
     })
   }, [schema])
@@ -1439,7 +1453,10 @@ export default function DashboardBuilder() {
       title: dashTitle, scheme: schemeName,
       widgets: widgets.map(w => {
         const pos = gridLayout.find(l => l.i === w.id)
-        return { ...w, gx: pos?.x ?? 0, gy: pos?.y ?? 0, gw: pos?.w ?? 6, gh: pos?.h ?? 5 }
+        const savedH = w.type === 'kpi'
+          ? 3  // always save KPI as h:3, never let resize bloat it
+          : (pos?.h ?? 6)
+        return { ...w, gx: pos?.x ?? 0, gy: pos?.y ?? 0, gw: pos?.w ?? 6, gh: savedH }
       }),
     }
     try {
@@ -1500,7 +1517,12 @@ export default function DashboardBuilder() {
           aggregation: 'sum', topN: null,
           ...extraCfg,
         })
-        newLayout.push({ i: id, x, y, w, h })
+        newLayout.push({
+          i: id, x, y, w, h,
+          minH: type === 'kpi' ? 2 : 3,
+          maxH: type === 'kpi' ? 3 : 12,
+          minW: type === 'kpi' ? 2 : 3,
+        })
       }
 
       // ── STEP 1: Detect how many KPIs are wanted ───────────────────
@@ -1942,8 +1964,8 @@ export default function DashboardBuilder() {
             isDraggable={editMode}
             isResizable={editMode}
             isDroppable={false}
-            compactType="vertical"
-            preventCollision={false}
+            compactType={null}
+            preventCollision={true}
             onLayoutChange={newL => setGridLayout(newL)}
             draggableHandle=".drag-handle"
             margin={[10, 10]}
