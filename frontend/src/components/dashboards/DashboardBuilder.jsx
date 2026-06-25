@@ -230,9 +230,13 @@ function KPIWidget({ cfg, data, S }) {
 
   const spark = [0.35, 0.55, 0.45, 0.75, 0.6, 0.85, 0.7, 1.0]
 
+  const KPI_FIXED_H = 160  // px — always this height, ignores grid cell size
+
   return (
     <div style={{
-      height: '100%',
+      height: KPI_FIXED_H,
+      maxHeight: KPI_FIXED_H,
+      minHeight: KPI_FIXED_H,
       display: 'flex', flexDirection: 'column',
       position: 'relative', overflow: 'hidden',
       background: S.isLight ? '#FFFFFF' : S.card,
@@ -253,13 +257,13 @@ function KPIWidget({ cfg, data, S }) {
         }} />
       )}
 
-      {/* Content — fills 150px (h:3 × rowHeight:50) proportionally */}
+      {/* Content — fixed layout inside 160px card */}
       <div style={{
         position: 'relative', zIndex: 1,
-        padding: '14px 16px 14px 18px',
+        padding: '14px 16px 12px 18px',
         display: 'flex', flexDirection: 'column',
-        justifyContent: 'space-between',
-        height: '100%',
+        gap: 10,
+        height: KPI_FIXED_H,
       }}>
         {/* Top: icon + label + sparkline */}
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
@@ -743,7 +747,9 @@ function WidgetCard({ cfg, rawData, allFilters, editMode, onEdit, onRemove, onDr
   if (isKPI) {
     return (
       <div style={{
-        height: '100%',
+        height: 160,
+        maxHeight: 160,
+        minHeight: 160,
         background: isLight ? '#FFFFFF' : S.card,
         border: `1px solid ${isLight ? '#E5E7EB' : S.border}`,
         borderRadius: 14, overflow: 'hidden',
@@ -1959,7 +1965,7 @@ export default function DashboardBuilder() {
             className="layout"
             layout={gridLayout}
             cols={12}
-            rowHeight={50}
+            rowHeight={54}
             width={canvasW}
             isDraggable={editMode}
             isResizable={editMode}

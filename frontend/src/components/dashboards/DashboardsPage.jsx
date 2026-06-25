@@ -135,9 +135,11 @@ function generateDashboard(prompt,schemeName,forced,chartData,title){
 }
 
 // ── Widget renderers ──────────────────────────────────────────────────────────
+const KPI_FIXED_H = 160;
+
 function KPIWidget({widget,S}){
   const val=widget.config?.value??0,chg=Number(widget.config?.change??0),up=chg>=0;
-  return(<div style={{height:"100%",padding:"16px 18px",display:"flex",flexDirection:"column",justifyContent:"space-between"}}>
+  return(<div style={{height:KPI_FIXED_H,padding:"16px 18px",display:"flex",flexDirection:"column",gap:10}}>
     <span style={{fontSize:11,color:S.muted,fontWeight:600}}>{widget.title}</span>
     <div style={{fontSize:28,fontWeight:900,color:S.text,letterSpacing:"-0.5px"}}>{fmtN(val)}</div>
     <span style={{fontSize:10,fontWeight:700,color:up?S.positive:S.negative,background:`${up?S.positive:S.negative}15`,border:`1px solid ${up?S.positive:S.negative}30`,borderRadius:20,padding:"2px 8px",width:"fit-content"}}>
@@ -172,7 +174,7 @@ function DashboardCanvas({layout,S,onRemove}){
       {kpis.length>0&&(
         <div style={{display:"grid",gridTemplateColumns:`repeat(${Math.min(kpis.length,4)},1fr)`,gap:12,marginBottom:12}}>
           {kpis.map(w=>(
-            <div key={w.id} style={{background:S.card,border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",minHeight:120,position:"relative"}}>
+            <div key={w.id} style={{background:S.card,border:`1px solid ${S.border}`,borderRadius:12,overflow:"hidden",height:KPI_FIXED_H,position:"relative"}}>
               <button onClick={()=>onRemove(w.id)} style={{position:"absolute",top:6,right:6,width:18,height:18,borderRadius:4,background:"rgba(249,114,114,0.12)",border:"none",color:"#f97272",cursor:"pointer",fontSize:11,display:"flex",alignItems:"center",justifyContent:"center",zIndex:2}}>×</button>
               <KPIWidget widget={w} S={S}/>
             </div>

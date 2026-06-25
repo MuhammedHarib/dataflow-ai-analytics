@@ -105,6 +105,8 @@ const fmtN = (n) => {
 };
 
 /* ─── Individual widget renderers ───────────────────────────────── */
+const KPI_FIXED_H = 160;
+
 function KPICard({ widget, scheme }) {
   const cfg = widget.config || {};
   const val = cfg.value ?? widget.data?.sum ?? 0;
@@ -116,8 +118,8 @@ function KPICard({ widget, scheme }) {
     : fmtN(val);
 
   return (
-    <div style={{ height:"100%", padding:"18px 20px", display:"flex",
-      flexDirection:"column", justifyContent:"space-between" }}>
+    <div style={{ height: KPI_FIXED_H, padding:"18px 20px", display:"flex",
+      flexDirection:"column", gap: 10 }}>
       <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
         <span style={{ fontSize:12, color:scheme.muted, fontWeight:500 }}>{widget.title}</span>
         <span style={{
@@ -416,8 +418,8 @@ function Widget({ widget, scheme, onRemove, onEdit }) {
         border: `1px solid ${hov ? scheme.accent+"33" : scheme.border}`,
         borderRadius: 12,
         overflow: "hidden",
-        height: "100%",
-        minHeight: isKPI ? 120 : 260,
+        height: isKPI ? KPI_FIXED_H : "100%",
+        minHeight: isKPI ? KPI_FIXED_H : 260,
         display: "flex",
         flexDirection: "column",
         transition: "border-color 0.15s, box-shadow 0.15s",
